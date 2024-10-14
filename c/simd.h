@@ -21,7 +21,47 @@ inline i128 f2i(f128 x) { return x; }
 
 f128 f64x2_make(double a, double b);
 inline f128 f64x2_make(double a, double b) {
-        return wasm_f64x2_make(a, b);
+    return wasm_f64x2_make(a, b);
+}
+
+i128 i64x2_splat(uint64_t a) {
+    return wasm_i64x2_splat(a);
+}
+
+i128 f64x2_splat(uint64_t a) {
+    return wasm_f64x2_splat(a);
+}
+
+i128 i64x2_make(uint64_t a, uint64_t b) {
+    return wasm_u64x2_make(a, b);
+}
+
+i128 i64x2_mul(i128 a, i128 b) {
+    return wasm_i64x2_mul(a, b);
+}
+
+i128 u64x2_mul(i128 a, i128 b) {
+    return wasm_i64x2_mul(a, b);
+}
+
+i128 i64x2_add(i128 a, i128 b) {
+    return wasm_i64x2_add(a, b);
+}
+
+i128 i64x2_and(i128 a, i128 b) {
+    return wasm_v128_and(a, b);
+}
+
+i128 u64x2_shr(i128 a, uint32_t b) {
+    return wasm_u64x2_shr(a, b);
+}
+
+i128 i64x2_shr(i128 a, uint32_t b) {
+    return wasm_i64x2_shr(a, b);
+}
+
+i128 i128_and(i128 a, i128 b) {
+    return wasm_v128_and(a, b);
 }
 
 /*
@@ -32,6 +72,11 @@ inline f128 f64x2_make(double a, double b) {
 f128 f64x2_fma(f128 a, f128 b, f128 c);
 inline f128 f64x2_fma(f128 a, f128 b, f128 c) {
     return wasm_f64x2_relaxed_madd(a, b, c);
+}
+
+f128 f64x2_sub(f128 a, f128 b);
+inline f128 f64x2_sub(f128 a, f128 b) {
+    return wasm_f64x2_sub(a, b);
 }
 
 /*

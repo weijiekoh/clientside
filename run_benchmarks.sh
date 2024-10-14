@@ -11,3 +11,6 @@ benchmark_dir="build/benchmarks"
 
 run_benchmark "$benchmark_dir/bench_mul_and_add.js"
 run_benchmark "$benchmark_dir/bench_fma.js"
+run_benchmark "$benchmark_dir/bench_simd_mul.js"
+run_benchmark "$benchmark_dir/bench_mul.js"
+run_benchmark "$benchmark_dir/bench_mont_mul.js"
