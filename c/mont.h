@@ -2,14 +2,17 @@
 #include "./bigintf.h"
 #include <stdint.h>
 
+/// Returns the higher 32 bits.
 static inline uint64_t hi(uint64_t v) {
     return v >> 32;
 }
 
+/// Returns the lower 32 bits.
 static inline uint64_t lo(uint64_t v) {
     return v & 0xFFFFFFFF;
 }
 
+/// Compares the most significant limb of val agaist that of p.
 bool msl_is_greater(
     BigIntF255 *val,
     BigIntF255 *p
@@ -17,6 +20,7 @@ bool msl_is_greater(
     return f64x2_extract_l(val->v[4]) > f64x2_extract_l(p->v[4]);
 }
 
+/// Conditional subtraction. p should not have the exponent or sign bits set.
 BigIntF255 reduce_bigintf(
     BigIntF255 *val,
     BigIntF255 *p
@@ -28,6 +32,7 @@ BigIntF255 reduce_bigintf(
     return *val;
 }
 
+/// TODO: document what this does; it appears to perform carries.
 BigIntF255 resolve_bigintf(BigIntF255 *val) {
     uint64_t B = 51;
     uint64_t mask = 0x7ffffffffffff;
@@ -35,6 +40,7 @@ BigIntF255 resolve_bigintf(BigIntF255 *val) {
     int64_t local[3] = {0};
     BigIntF255 r = bigintf_new();
 
+    // Copy bits from val to v0 - v4
     int64_t v0, v1, v2, v3, v4;
     memcpy(&v0, &(val->v[0]), sizeof(uint64_t));
     memcpy(&v1, &(val->v[1]), sizeof(uint64_t));
@@ -66,6 +72,7 @@ BigIntF255 resolve_bigintf(BigIntF255 *val) {
 // - Niall's SIMD algo using f64s (done)
 // - Non-SIMD CIOS (30-bit limbs in arrays of uint64_t) from Mitscha-Baude
 
+/// Adapted from https://github.com/z-prize/2023-entries/tree/main/prize-2-msm-wasm/prize-2b-twisted-edwards/yrrid-snarkify
 BigIntF255 mont_mul_cios_f64_simd(
     BigIntF255 *ar,
     BigIntF255 *br,
@@ -172,6 +179,15 @@ BigIntF255 mont_mul_cios_f64_simd(
     return res;
 }
 
+/// Amine Mrabet, Nadia El-Mrabet, Ronan Lashermes, Jean-Baptiste Rigaud, Belgacem Bouallegue, et
+/// al.. High-performance Elliptic Curve Cryptography by Using the CIOS Method for Modular
+/// Multiplication. CRiSIS 2016, Sep 2016, Roscoff, France. hal-01383162
+/// https://inria.hal.science/hal-01383162/document, page 4
+/// Also see Acar, 1996.
+/// This is the "classic" CIOS algorithm.
+/// Does not implement the gnark optimisation (https://hackmd.io/@gnark/modular_multiplication),
+/// but that should be useful.
+/// Does not use SIMD instructions.
 BigInt256 mont_mul_cios(
     BigInt256 *ar,
     BigInt256 *br,
@@ -270,6 +286,8 @@ BigInt256 mont_mul_cios(
     return res;
 }
 
+/// Algorithm 4 of "Montgomery Arithmetic from a Software Perspective" by Bos and Montgomery
+/// without SIMD opcodes.
 BigInt256 bm17_non_simd_mont_mul(
     BigInt256 *ar,
     BigInt256 *br,

@@ -12,9 +12,13 @@ There is much to be done:
     - [x] CIOS (BM17)
     - [x] CIOS using f64s (Niall Emmart)
     - [ ] CIOS using 30-bit limbs (Mitscha-Baude)
+- [ ] Inline-assembly implementations of core low-level algorithms (big integer
+      arithmetic and Montgomery multiplication)
 - [ ] Multi-scalar multiplication
 - [ ] Fast fourier transform
-- [ ] Comparision against other libraries
+- [ ] Witness generation
+- [ ] Proof generation
+- [ ] Benchmarks against other libraries
 - [ ] TBD
 
 ## Quick start
