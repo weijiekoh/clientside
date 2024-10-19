@@ -31,6 +31,7 @@ BigInt256 reference_func_mont_mul_cios(
     BigInt256 *a,
     BigInt256 *b,
     BigInt256 *p,
+    uint64_t *p_for_redc,
     uint64_t mu,
     uint64_t cost
 ) {
@@ -39,7 +40,7 @@ BigInt256 reference_func_mont_mul_cios(
     BigInt256 z;
 
     for (uint64_t i = 0; i < cost; i ++) {
-        z = mont_mul_cios(&x, &y, p, mu);
+        z = mont_mul_cios(&x, &y, p, p_for_redc, mu);
         x = y;
         y = z;
     }
@@ -86,7 +87,7 @@ BigInt256 reference_func_bm17_simd(
 }
 
 int main() {
-    uint64_t cost = 1 << 10;
+    uint64_t cost = 1 << 20;
 
     // Only check the result against the hardcoded expected constants if cost == 1024
     bool do_assert = cost == 1 << 10;
@@ -130,8 +131,12 @@ int main() {
     printf("%llu Montgomery multiplications with BM17 (SIMD) took %fms\n", cost, end - start);
 
     // Benchmark mont_mul_cios
+    uint64_t p_wide[9] = {0};
+    for (int i = 0; i < 8; i ++) {
+        p_wide[i] = p.v[i];
+    }
     start = emscripten_get_now();
-    res = reference_func_mont_mul_cios(&ar, &br, &p, 4294967295, cost);
+    res = reference_func_mont_mul_cios(&ar, &br, &p, p_wide, 4294967295, cost);
     end = emscripten_get_now();
     res_hex = bigint_to_hex(&res);
     if (do_assert)

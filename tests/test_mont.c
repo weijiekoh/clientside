@@ -25,7 +25,7 @@ MU_TEST(test_mont_mul_cios_f64_simd) {
     mu_check(result == 0);
 
     char* result_hex = malloc(65 * sizeof(char));
-    printf("\n");
+    /*printf("\n");*/
 
     BigIntF255 p_for_redc = bigintf_new();
     uint64_t p0 = 0x1800000000001;
@@ -103,18 +103,55 @@ void do_mont_mul_test(
 
         char *abr_hex = bigint_to_hex(&abr);
 
-        printf("%s\n", ar_hex);
-        printf("%s\n", br_hex);
-        printf("%s\n", c_hex);
-        printf("%s\n", abr_hex);
+        /*printf("%s\n", ar_hex);*/
+        /*printf("%s\n", br_hex);*/
+        /*printf("%s\n", c_hex);*/
+        /*printf("%s\n", abr_hex);*/
         mu_check(strcmp(abr_hex, c_hex) == 0);
     }
 }
 
 MU_TEST(test_mont_mul_cios) {
     uint64_t n0 = 4294967295;
-    MontMulFunc func_ptr = mont_mul_cios;
-    do_mont_mul_test(func_ptr, n0);
+    char* p_hex = "12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001";
+
+    char** hex_strs = get_mont_test_data();
+    
+    BigInt256 p, ar, br, abr, expected;
+
+    // Convert p_hex to a Bigint256
+    int result;
+    result = hex_to_bigint256(p_hex, &p);
+    mu_check(result == 0);
+
+    uint64_t p_wide[9] = {0};
+    for (int i = 0; i < 8; i ++) {
+        p_wide[i] = p.v[i];
+    }
+
+    for (int i = 0; i < NUM_TESTS; i++) {
+        char* ar_hex = hex_strs[i * 3];
+        char* br_hex = hex_strs[i * 3 + 1];
+        char* c_hex = hex_strs[i * 3 + 2];
+
+        result = hex_to_bigint256(ar_hex, &ar);
+        mu_check(result == 0);
+        result = hex_to_bigint256(br_hex, &br);
+        mu_check(result == 0);
+        result = hex_to_bigint256(c_hex, &expected);
+        mu_check(result == 0);
+
+        // Perform mont mul
+        abr = mont_mul_cios(&ar, &br, &p, p_wide, n0);
+
+        char *abr_hex = bigint_to_hex(&abr);
+
+        /*printf("%s\n", ar_hex);*/
+        /*printf("%s\n", br_hex);*/
+        /*printf("%s\n", c_hex);*/
+        /*printf("%s\n", abr_hex);*/
+        mu_check(strcmp(abr_hex, c_hex) == 0);
+    }
 }
 
 MU_TEST(test_bm17_simd_mont_mul) {
@@ -130,9 +167,9 @@ MU_TEST(test_bm17_non_simd_mont_mul) {
 }
 
 MU_TEST_SUITE(test_suite) {
-    /*MU_RUN_TEST(test_bm17_simd_mont_mul);*/
-    /*MU_RUN_TEST(test_bm17_non_simd_mont_mul);*/
-    /*MU_RUN_TEST(test_mont_mul_cios);*/
+    MU_RUN_TEST(test_bm17_simd_mont_mul);
+    MU_RUN_TEST(test_bm17_non_simd_mont_mul);
+    MU_RUN_TEST(test_mont_mul_cios);
     MU_RUN_TEST(test_mont_mul_cios_f64_simd);
 }
 

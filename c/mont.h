@@ -2,6 +2,70 @@
 #include "./bigintf.h"
 #include <stdint.h>
 
+// TODO: 
+// - https://github.com/ingonyama-zk/papers/blob/main/multi_precision_fast_mod_mul.pdf
+// - https://github.com/mitschabaude/montgomery/blob/main/doc/zprize22.md#13-x-30-bit-multiplication
+
+/// Returns the higher 30 bits.
+static inline uint64_t hi_30(uint64_t v) {
+    return v >> 30;
+}
+
+/// Returns the lower 30 bits.
+static inline uint64_t lo_30(uint64_t v) {
+    return v & 0x3FFFFFFF;
+}
+
+//BigInt270 mont_mul_mitschabaude(
+    //BigInt270 *ar,
+    //BigInt270 *br,
+    //BigInt270 *p,
+    //uint64_t mu
+//) {
+    //const int nsafe = 8;
+    //const size_t NUM_LIMBS = 9;
+    //uint64_t s[9] = {0};
+
+    //uint64_t t, t_lo, qi, c;
+    //for (int i = 0; i < NUM_LIMBS; i ++) {
+        //t = s[0] + ar->v[i] * br->v[0];
+        //t_lo = lo_30(t);
+        //qi = mu * t_lo;
+
+        //c = hi_30(t + qi * p->v[0]);
+
+        //for (int j = 0; j < NUM_LIMBS - 2; j ++) {
+            //t = s[j] + ar->v[i] * br->v[j] + qi * p->v[j];
+
+            //if ((j-1) % nsafe == 0) {
+                //t += c;
+            //}
+            //if (j % nsafe == 0) {
+                //c = hi_30(t);
+                //s[j - 1] = lo_30(t);
+            //} else {
+                //s[j - 1] = t;
+            //}
+        //}
+
+        //if ((NUM_LIMBS - 2) % nsafe == 0) {
+            //c = s[NUM_LIMBS - 1] + ar->v[i] * br->v[NUM_LIMBS - 1] + qi * p->v[NUM_LIMBS - 1];
+            //s[NUM_LIMBS - 2] = lo_30(c);
+            //c = hi_30(c);
+        //} else {
+            //s[NUM_LIMBS - 2] = ar->v[i] * br->v[NUM_LIMBS - 1] + qi * p->v[NUM_LIMBS - 1];
+        //}
+    //}
+
+    //c = 0;
+    //for (int i = 0; i < NUM_LIMBS; i ++) {
+        //c = s[i] + c;
+        //s[i] = lo_30(c);
+        //c = hi_30(c);
+    //}
+    //// Conditional reduction
+//}
+
 /// Returns the higher 32 bits.
 static inline uint64_t hi(uint64_t v) {
     return v >> 32;
@@ -192,6 +256,7 @@ BigInt256 mont_mul_cios(
     BigInt256 *ar,
     BigInt256 *br,
     BigInt256 *p,
+    uint64_t* p_for_redc,
     uint64_t n0
 ) {
     size_t NUM_LIMBS = 8;
@@ -255,12 +320,6 @@ BigInt256 mont_mul_cios(
     }
 
     uint64_t t_wide[9] = {0};
-    uint64_t p_wide[9] = {0};
-
-    for (int i = 0; i < NUM_LIMBS; i ++) {
-        p_wide[i] = p->v[i];
-
-    }
     for (int i = 0; i < NUM_LIMBS + 1; i ++) {
         t_wide[i] = t[i];
     }
@@ -271,7 +330,7 @@ BigInt256 mont_mul_cios(
 
     for (int i = 0; i < NUM_LIMBS + 1; i ++) {
         uint64_t lhs_limb = t_wide[i];
-        uint64_t rhs_limb = p_wide[i];
+        uint64_t rhs_limb = p_for_redc[i];
         uint64_t diff = lhs_limb - rhs_limb - borrow;
         result[i] = diff & limb_mask;
         borrow = (diff >> B) & 1;
