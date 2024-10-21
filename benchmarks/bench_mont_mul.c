@@ -138,34 +138,57 @@ int main(int argc, char *argv[]) {
     result = hex_to_bigint256(br_hex, &br);
     assert(result == 0);
 
+    int num_runs = 5;
+    double start_a, end_a;
+    double start_b, end_b;
+    double start_c, end_c;
+    double start_d, end_d;
+    double start_e, end_e;
+
+    double avg_a = 0;
+    double avg_b = 0;
+    double avg_c = 0;
+    double avg_d = 0;
+    double avg_e = 0;
+
     // Benchmark bm17_non_simd_mont_mul
-    double start_a = emscripten_get_now();
-    res = reference_func_bm17_non_simd(&ar, &br, &p, 1, cost);
-    double end_a = emscripten_get_now();
-    char *res_hex = bigint_to_hex(&res);
-    if (do_assert)
-        assert(strcmp(res_hex, expected_hex) == 0);
+    for (int i = 0; i < num_runs; i ++) {
+        start_a = emscripten_get_now();
+        res = reference_func_bm17_non_simd(&ar, &br, &p, 1, cost);
+        end_a = emscripten_get_now();
+        avg_a += end_a - start_a;
+        char* res_hex = bigint_to_hex(&res);
+        if (do_assert)
+            assert(strcmp(res_hex, expected_hex) == 0);
+    }
 
     // Benchmark bm17_simd_mont_mul. It is slower in WASM because it uses SIMD opcodes that are not
     // natively executed by the CPU.
-    double start_b = emscripten_get_now();
-    res = reference_func_bm17_simd(&ar, &br, &p, 1, cost);
-    double end_b = emscripten_get_now();
-    res_hex = bigint_to_hex(&res);
-    if (do_assert)
-        assert(strcmp(res_hex, expected_hex) == 0);
+    for (int i = 0; i < num_runs; i ++) {
+        start_b = emscripten_get_now();
+        res = reference_func_bm17_simd(&ar, &br, &p, 1, cost);
+        end_b = emscripten_get_now();
+        avg_b += end_b - start_b;
+        char* res_hex = bigint_to_hex(&res);
+        if (do_assert)
+            assert(strcmp(res_hex, expected_hex) == 0);
+    }
 
     // Benchmark mont_mul_cios
     uint64_t p_wide[9] = {0};
     for (int i = 0; i < 8; i ++) {
         p_wide[i] = p.v[i];
     }
-    double start_c = emscripten_get_now();
-    res = reference_func_mont_mul_cios(&ar, &br, &p, p_wide, 4294967295, cost);
-    double end_c = emscripten_get_now();
-    res_hex = bigint_to_hex(&res);
-    if (do_assert)
-        assert(strcmp(res_hex, expected_hex) == 0);
+
+    for (int i = 0; i < num_runs; i ++) {
+        start_c = emscripten_get_now();
+        res = reference_func_mont_mul_cios(&ar, &br, &p, p_wide, 4294967295, cost);
+        end_c = emscripten_get_now();
+        avg_c += end_c - start_c;
+        char* res_hex = bigint_to_hex(&res);
+        if (do_assert)
+            assert(strcmp(res_hex, expected_hex) == 0);
+    }
 
     // Benchmark mont_mul_cios_f64_simd
     ar_hex = "0c0048f9de61fa9334139e21184664eb16a77e902d9d06924a1b6b05f6d08675";
@@ -194,15 +217,16 @@ int main(int argc, char *argv[]) {
 
     uint64_t n0 = 422212465065983;
 
-    double start_d = emscripten_get_now();
-    res_f = reference_func_mont_mul_cios_f64_simd(&ar_f, &br_f, &p_f, &p_for_redc, n0, cost);
-    double end_d = emscripten_get_now();
-
-    char res_f_hex[65];
-    bigintf255_to_hex(&res_f, res_f_hex);
-
-    if (do_assert)
-        assert(strcmp(res_f_hex, expected_for_cios_f64_hex) == 0);
+    for (int i = 0; i < num_runs; i ++) {
+        start_d = emscripten_get_now();
+        res_f = reference_func_mont_mul_cios_f64_simd(&ar_f, &br_f, &p_f, &p_for_redc, n0, cost);
+        end_d = emscripten_get_now();
+        avg_d = end_d - start_d;
+        char res_f_hex[65];
+        bigintf255_to_hex(&res_f, res_f_hex);
+        if (do_assert)
+            assert(strcmp(res_f_hex, expected_for_cios_f64_hex) == 0);
+    }
 
     // Benchmark mont_mul_9x30
     ar_hex = "107b8491edf2141b3c5b6f2dc8a34c3b46e37782d348cf8a4fa87b68433a2db9";
@@ -217,20 +241,26 @@ int main(int argc, char *argv[]) {
     result = hex_to_bigint270(br_hex, &br_270);
     assert(result == 0);
 
-    double start_e = emscripten_get_now();
-    res_270 = reference_func_mont_mul_9x30(&ar_270, &br_270, &p_270, 1073741823, cost);
-    double end_e = emscripten_get_now();
+    for (int i = 0; i < num_runs; i ++) {
+        start_e = emscripten_get_now();
+        res_270 = reference_func_mont_mul_9x30(&ar_270, &br_270, &p_270, 1073741823, cost);
+        end_e = emscripten_get_now();
+        avg_e = end_e - start_e;
+        char* res_hex = bigint270_to_hex(&res_270);
+        if (do_assert)
+            assert(strcmp(res_hex, expected_for_9x30_hex) == 0);
+    }
 
-    res_hex = bigint270_to_hex(&res_270);
+    avg_a /= num_runs;
+    avg_b /= num_runs;
+    avg_c /= num_runs;
+    avg_d /= num_runs;
+    avg_e /= num_runs;
 
-    if (do_assert)
-        /*printf("%s\n%s\n", res_hex, expected_for_9x30_hex);*/
-        assert(strcmp(res_hex, expected_for_9x30_hex) == 0);
-
-    printf("%llu Montgomery multiplications with BM17 (non-SIMD) took                             %f ms\n", cost, end_a - start_a);
-    printf("%llu Montgomery multiplications with BM17 (SIMD) took                                 %f ms\n", cost, end_b - start_b);
-    printf("%llu Montgomery multiplications with CIOS (non-SIMD, without gnark optimisation) took %f ms\n", cost, end_c - start_c);
-    printf("%llu Montgomery multiplications with f64s and CIOS (SIMD) took                        %f ms\n", cost, end_d - start_d);
-    printf("%llu Montgomery multiplications with 30-bit limbs took                                %f ms\n", cost, end_e - start_e);
+    printf("%llu Montgomery multiplications with BM17 (non-SIMD) took                             %f ms\n", cost, avg_a);
+    printf("%llu Montgomery multiplications with BM17 (SIMD) took                                 %f ms\n", cost, avg_b);
+    printf("%llu Montgomery multiplications with CIOS (non-SIMD, without gnark optimisation) took %f ms\n", cost, avg_c);
+    printf("%llu Montgomery multiplications with f64s and CIOS (SIMD) took                        %f ms\n", cost, avg_d);
+    printf("%llu Montgomery multiplications with 30-bit limbs took                                %f ms\n", cost, avg_e);
 
 }
