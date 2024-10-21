@@ -27,6 +27,25 @@ BigIntF255 reference_func_mont_mul_cios_f64_simd(
     return y;
 }
 
+BigInt270 reference_func_mont_mul_9x30(
+    BigInt270 *a,
+    BigInt270 *b,
+    BigInt270 *p,
+    uint64_t n0,
+    uint64_t cost
+) {
+    BigInt270 x = *a;
+    BigInt270 y = *b;
+    BigInt270 z;
+
+    for (uint64_t i = 0; i < cost; i ++) {
+        z = mont_mul_9x30(&x, &y, p, n0);
+        x = y;
+        y = z;
+    }
+    return y;
+}
+
 BigInt256 reference_func_mont_mul_cios(
     BigInt256 *a,
     BigInt256 *b,
@@ -46,7 +65,6 @@ BigInt256 reference_func_mont_mul_cios(
     }
     return y;
 }
-
 
 BigInt256 reference_func_bm17_non_simd(
     BigInt256 *a,
@@ -86,13 +104,23 @@ BigInt256 reference_func_bm17_simd(
     return y;
 }
 
-int main() {
-    uint64_t cost = 1 << 20;
+int main(int argc, char *argv[]) {
+    uint64_t log_cost = 10;
+    if (argc > 1) {
+        char* endptr;
+        log_cost = strtoull(argv[1], &endptr, 0);
+        
+        if (*endptr != '\0') {
+            printf("Error: Invalid argument format; should be an integer.\n");
+            exit(1);
+        }
+    }
+
+    uint64_t cost = 1 << log_cost;
 
     // Only check the result against the hardcoded expected constants if cost == 1024
     bool do_assert = cost == 1 << 10;
 
-    double start, end;
     int result;
     BigInt256 p, ar, br, res;
     BigIntF255 p_f, ar_f, br_f, res_f;
@@ -102,7 +130,6 @@ int main() {
     char* br_hex = "094c0e4dc5769c3bcc4c984fa08b0ceaf437545d83d259471a983cf05e97f19b";
     // These results are hardcoded for cost == 1024
     char* expected_hex = "116a8d07bb676b153699f5744d2eace047a0646f4cfe06012a0bbd53720543b1";
-    char* expected_for_cios_f64_hex = "120af9332aca0835cba7214954b32e70d0a56db70e7f03011a0e9ea9b902a1d9";
 
     result = hex_to_bigint256(p_hex, &p);
     assert(result == 0);
@@ -112,40 +139,39 @@ int main() {
     assert(result == 0);
 
     // Benchmark bm17_non_simd_mont_mul
-    start = emscripten_get_now();
+    double start_a = emscripten_get_now();
     res = reference_func_bm17_non_simd(&ar, &br, &p, 1, cost);
-    end = emscripten_get_now();
+    double end_a = emscripten_get_now();
     char *res_hex = bigint_to_hex(&res);
     if (do_assert)
         assert(strcmp(res_hex, expected_hex) == 0);
-    printf("%llu Montgomery multiplications with BM17 (non-SIMD) took %fms\n", cost, end - start);
 
     // Benchmark bm17_simd_mont_mul. It is slower in WASM because it uses SIMD opcodes that are not
     // natively executed by the CPU.
-    start = emscripten_get_now();
+    double start_b = emscripten_get_now();
     res = reference_func_bm17_simd(&ar, &br, &p, 1, cost);
-    end = emscripten_get_now();
+    double end_b = emscripten_get_now();
     res_hex = bigint_to_hex(&res);
     if (do_assert)
         assert(strcmp(res_hex, expected_hex) == 0);
-    printf("%llu Montgomery multiplications with BM17 (SIMD) took %fms\n", cost, end - start);
 
     // Benchmark mont_mul_cios
     uint64_t p_wide[9] = {0};
     for (int i = 0; i < 8; i ++) {
         p_wide[i] = p.v[i];
     }
-    start = emscripten_get_now();
+    double start_c = emscripten_get_now();
     res = reference_func_mont_mul_cios(&ar, &br, &p, p_wide, 4294967295, cost);
-    end = emscripten_get_now();
+    double end_c = emscripten_get_now();
     res_hex = bigint_to_hex(&res);
     if (do_assert)
         assert(strcmp(res_hex, expected_hex) == 0);
-    printf("%llu Montgomery multiplications with CIOS (non-SIMD, without gnark optimisation) took %fms\n", cost, end - start);
 
     // Benchmark mont_mul_cios_f64_simd
     ar_hex = "0c0048f9de61fa9334139e21184664eb16a77e902d9d06924a1b6b05f6d08675";
     br_hex = "0dfbb9d62fd1a0c9168072b6fe615e7626f0e5ae29e92ca41254de782f4bf8ce";
+    char* expected_for_cios_f64_hex = "120af9332aca0835cba7214954b32e70d0a56db70e7f03011a0e9ea9b902a1d9";
+
     // Convert to BigIntF255
     result = hex_to_bigintf255(p_hex, &p_f);
     assert(result == 0);
@@ -168,14 +194,43 @@ int main() {
 
     uint64_t n0 = 422212465065983;
 
-    start = emscripten_get_now();
+    double start_d = emscripten_get_now();
     res_f = reference_func_mont_mul_cios_f64_simd(&ar_f, &br_f, &p_f, &p_for_redc, n0, cost);
-    end = emscripten_get_now();
+    double end_d = emscripten_get_now();
 
     char res_f_hex[65];
     bigintf255_to_hex(&res_f, res_f_hex);
 
     if (do_assert)
         assert(strcmp(res_f_hex, expected_for_cios_f64_hex) == 0);
-    printf("%llu Montgomery multiplications with f64s and CIOS (SIMD) took %fms\n", cost, end - start);
+
+    // Benchmark mont_mul_9x30
+    ar_hex = "107b8491edf2141b3c5b6f2dc8a34c3b46e37782d348cf8a4fa87b68433a2db9";
+    br_hex = "11ab14a88c521c7574625aa40c9ff2066edb54cc3651a587358f17a5fc66a022";
+    char* expected_for_9x30_hex = "0261dacd294624a0f0d0dab1fe80014ac3d36e2541800c75d286dc8150ec044c";
+
+    BigInt270 ar_270, br_270, p_270, res_270;
+    result = hex_to_bigint270(p_hex, &p_270);
+    assert(result == 0);
+    result = hex_to_bigint270(ar_hex, &ar_270);
+    assert(result == 0);
+    result = hex_to_bigint270(br_hex, &br_270);
+    assert(result == 0);
+
+    double start_e = emscripten_get_now();
+    res_270 = reference_func_mont_mul_9x30(&ar_270, &br_270, &p_270, 1073741823, cost);
+    double end_e = emscripten_get_now();
+
+    res_hex = bigint270_to_hex(&res_270);
+
+    if (do_assert)
+        /*printf("%s\n%s\n", res_hex, expected_for_9x30_hex);*/
+        assert(strcmp(res_hex, expected_for_9x30_hex) == 0);
+
+    printf("%llu Montgomery multiplications with BM17 (non-SIMD) took                             %f ms\n", cost, end_a - start_a);
+    printf("%llu Montgomery multiplications with BM17 (SIMD) took                                 %f ms\n", cost, end_b - start_b);
+    printf("%llu Montgomery multiplications with CIOS (non-SIMD, without gnark optimisation) took %f ms\n", cost, end_c - start_c);
+    printf("%llu Montgomery multiplications with f64s and CIOS (SIMD) took                        %f ms\n", cost, end_d - start_d);
+    printf("%llu Montgomery multiplications with 30-bit limbs took                                %f ms\n", cost, end_e - start_e);
+
 }

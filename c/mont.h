@@ -4,7 +4,12 @@
 
 // TODO: 
 // - https://github.com/ingonyama-zk/papers/blob/main/multi_precision_fast_mod_mul.pdf
-// - https://github.com/mitschabaude/montgomery/blob/main/doc/zprize22.md#13-x-30-bit-multiplication
+// Done:
+// - Non-SIMD CIOS (32-bit limbs in arrays of uint64_t) from Acar (see Mrabet et al)
+// - Non-SIMD CIOS (51-bit limbs in arrays of doubles) from BM17
+// - SIMD CIOS (51-bit limbs in arrays of doubles) from BM17
+// - Niall's SIMD algo using f64s
+// - Non-SIMD CIOS (30-bit limbs in arrays of uint64_t) from Mitscha-Baude
 
 /// Returns the higher 30 bits.
 static inline uint64_t hi_30(uint64_t v) {
@@ -16,55 +21,125 @@ static inline uint64_t lo_30(uint64_t v) {
     return v & 0x3FFFFFFF;
 }
 
-//BigInt270 mont_mul_mitschabaude(
-    //BigInt270 *ar,
-    //BigInt270 *br,
-    //BigInt270 *p,
-    //uint64_t mu
-//) {
-    //const int nsafe = 8;
-    //const size_t NUM_LIMBS = 9;
-    //uint64_t s[9] = {0};
+bool gt_270(
+    uint64_t* s,
+    BigInt270 *p
+) {
+    int i;
+    for (int idx = 0; idx < 9; idx ++) {
+        i = 8 - idx;
+        if (s[i] < p->v[i]) {
+            return false;
+        } else if (s[i] > p->v[i]) {
+            return true;
+        }
+    }
+    return true;
+}
 
-    //uint64_t t, t_lo, qi, c;
-    //for (int i = 0; i < NUM_LIMBS; i ++) {
-        //t = s[0] + ar->v[i] * br->v[0];
-        //t_lo = lo_30(t);
-        //qi = mu * t_lo;
+void sub_270(
+    uint64_t* res,
+    uint64_t* s,
+    BigInt270 *p
+) {
+    uint64_t borrow = 0;
+    uint64_t mask = 0x3fffffff;
 
-        //c = hi_30(t + qi * p->v[0]);
+    uint64_t diff;
+    for (int i = 0; i < 9; i ++) {
+        diff = s[i] - p->v[i] - borrow;
+        res[i] = diff & mask;
+        borrow = (diff >> 30) & 1;
+    }
+}
 
-        //for (int j = 0; j < NUM_LIMBS - 2; j ++) {
-            //t = s[j] + ar->v[i] * br->v[j] + qi * p->v[j];
+/// See
+/// https://github.com/mitschabaude/montgomery/blob/main/doc/zprize22.md#13-x-30-bit-multiplication
+BigInt270 mont_mul_9x30(
+    BigInt270 *ar,
+    BigInt270 *br,
+    BigInt270 *p,
+    uint64_t mu
+) {
+    const int nsafe = 8;
+    const size_t NUM_LIMBS = 9;
+    uint64_t s[9] = {0};
 
-            //if ((j-1) % nsafe == 0) {
-                //t += c;
-            //}
-            //if (j % nsafe == 0) {
-                //c = hi_30(t);
-                //s[j - 1] = lo_30(t);
-            //} else {
-                //s[j - 1] = t;
-            //}
-        //}
+    uint64_t t, t_lo, qi, c;
+    for (int i = 0; i < NUM_LIMBS; i ++) {
+        t = s[0] + ar->v[i] * br->v[0];
+        t_lo = lo_30(t);
+        qi = lo_30(mu * t_lo);
+        c = hi_30(t + qi * p->v[0]);
 
-        //if ((NUM_LIMBS - 2) % nsafe == 0) {
-            //c = s[NUM_LIMBS - 1] + ar->v[i] * br->v[NUM_LIMBS - 1] + qi * p->v[NUM_LIMBS - 1];
-            //s[NUM_LIMBS - 2] = lo_30(c);
-            //c = hi_30(c);
-        //} else {
-            //s[NUM_LIMBS - 2] = ar->v[i] * br->v[NUM_LIMBS - 1] + qi * p->v[NUM_LIMBS - 1];
-        //}
-    //}
+        // If we ignore nsafe:
+        /*
+        for (int j = 1; j < NUM_LIMBS; j ++) {
+            c = s[j] + ar->v[i] * br->v[j] + qi * p->v[j] + c;
+            s[j - 1] = lo_30(c);
+            c = hi_30(c);
+        }
+        s[NUM_LIMBS - 1] = c;
+        */
 
-    //c = 0;
-    //for (int i = 0; i < NUM_LIMBS; i ++) {
-        //c = s[i] + c;
-        //s[i] = lo_30(c);
-        //c = hi_30(c);
-    //}
-    //// Conditional reduction
-//}
+        // The full modified algo if we know nsafe:
+        /*
+        for (int j = 1; j < NUM_LIMBS - 1; j ++) {
+            t = s[j] + ar->v[i] * br->v[j] + qi * p->v[j];
+
+            if ((j-1) % nsafe == 0) {
+                t += c;
+            }
+            if (j % nsafe == 0) {
+                c = hi_30(t);
+                s[j - 1] = lo_30(t);
+            } else {
+                s[j - 1] = t;
+            }
+        }
+
+        if ((NUM_LIMBS - 2) % nsafe == 0) {
+            c = s[NUM_LIMBS - 1] + ar->v[i] * br->v[NUM_LIMBS - 1] + qi * p->v[NUM_LIMBS - 1];
+            s[NUM_LIMBS - 2] = lo_30(c);
+            c = hi_30(c);
+        } else {
+            s[NUM_LIMBS - 2] = ar->v[i] * br->v[NUM_LIMBS - 1] + qi * p->v[NUM_LIMBS - 1];
+        }
+        */
+
+        // When nsafe equals 8, we can further optimise the above:
+        t = s[1] + ar->v[i] * br->v[1] + qi * p->v[1];
+        t += c;
+        s[0] = t;
+        for (int j = 2; j < NUM_LIMBS - 1; j ++) {
+            t = s[j] + ar->v[i] * br->v[j] + qi * p->v[j];
+            s[j - 1] = t;
+        }
+        s[NUM_LIMBS - 2] = ar->v[i] * br->v[NUM_LIMBS - 1] + qi * p->v[NUM_LIMBS - 1];
+    }
+
+    c = 0;
+    for (int i = 0; i < NUM_LIMBS; i ++) {
+        c = s[i] + c;
+        s[i] = lo_30(c);
+        c = hi_30(c);
+    }
+
+    // Conditional reduction
+    BigInt270 res = bigint270_new();
+    if (gt_270(s, p)) {
+        uint64_t r[9];
+        sub_270(r, s, p);
+        for (int i = 0; i < 9; i ++) {
+            res.v[i] = r[i];
+        }
+    } else {
+        for (int i = 0; i < 9; i ++) {
+            res.v[i] = s[i];
+        }
+    }
+    return res;
+}
 
 /// Returns the higher 32 bits.
 static inline uint64_t hi(uint64_t v) {
@@ -129,13 +204,6 @@ BigIntF255 resolve_bigintf(BigIntF255 *val) {
     return r;
 }
 
-// To implement and benchmark:
-// - Non-SIMD CIOS (32-bit limbs in arrays of uint64_t) from Acar (see Mrabet et al) (done)
-// - Non-SIMD CIOS (51-bit limbs in arrays of doubles) from BM17 (done)
-// - SIMD CIOS (51-bit limbs in arrays of doubles) from BM17 (done)
-// - Niall's SIMD algo using f64s (done)
-// - Non-SIMD CIOS (30-bit limbs in arrays of uint64_t) from Mitscha-Baude
-
 /// Adapted from https://github.com/z-prize/2023-entries/tree/main/prize-2-msm-wasm/prize-2b-twisted-edwards/yrrid-snarkify
 BigIntF255 mont_mul_cios_f64_simd(
     BigIntF255 *ar,
@@ -152,6 +220,9 @@ BigIntF255 mont_mul_cios_f64_simd(
         bd[i] = br->v[i];
     }
 
+    // Refer to make_initial() in Niall's paper and also
+    // https://github.com/mitschabaude/montgomery/blob/main/src/51x5/fma.ts#L58
+    // to understand how these magic numbers are generated.
     sum[0] = i64x2_splat(0x7990000000000000);
     sum[1] = i64x2_splat(0x6660000000000000);
     sum[2] = i64x2_splat(0x5330000000000000);

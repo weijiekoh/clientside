@@ -1,26 +1,26 @@
 #include "minunit.h"
 #include "../c/bigint.h"
 
-/*
+
 // Inline WASM using __asm__ in C code
 int add(int a, int b) {
-  int result;
-  __asm__ (
-    "local.get %1\n"  // Push 'a' onto the stack
-    "local.get %2\n"  // Push 'b' onto the stack
-    "i32.add\n"       // Perform the addition
-    "local.set %0\n"  // Store result in 'result'
-    : "=r" (result)   // Output operand
-    : "r" (a), "r" (b) // Input operands
-  );
-  return result;
+    int result;
+    __asm__ (
+        "local.get %1\n"   // Push 'a' onto the stack
+        "local.get %2\n"   // Push 'b' onto the stack
+        "i32.add\n"        // Perform the addition
+        "local.set %0\n"   // Store result in 'result'
+        : "=r" (result)    // Output operand
+        : "r" (a), "r" (b) // Input operands
+    );
+    return result;
 }
 
 MU_TEST(test_asm) {
-      int a = 5, b = 10;
-  printf("Result of %d + %d = %d\n", a, b, add(a, b));
+    int a = 5, b = 10;
+    printf("Result of %d + %d = %d\n", a, b, add(a, b));
 }
-*/
+
 
 MU_TEST(test_bigint_rand) {
     BigInt256 rand0 = bigint_rand(0);
@@ -204,7 +204,7 @@ MU_TEST(test_bigint_sub_3) {
 }
 
 MU_TEST_SUITE(test_suite) {
-	/*MU_RUN_TEST(test_asm);*/
+    MU_RUN_TEST(test_asm);
 	MU_RUN_TEST(test_bigint_eq);
 	MU_RUN_TEST(test_bigint_gt);
 	MU_RUN_TEST(test_bigint_sub);

@@ -11,8 +11,8 @@
 
 #CFLAGS := --target=wasm32 -matomics -msimd128 -mrelaxed-simd -O3 -nostdlib -DWASM
 CC := emcc
-CFLAGS      := -DWASM -msimd128 -mrelaxed-simd -O3
-TEST_CFLAGS := -DWASM -msimd128 -mrelaxed-simd -O3
+CFLAGS      := -DWASM -msimd128 -mrelaxed-simd -O3 --target=wasm32
+TEST_CFLAGS := -DWASM -msimd128 -mrelaxed-simd -O3 --target=wasm32
 
 NODE := $(shell which node)
 TIME := $(shell which time)
@@ -26,10 +26,9 @@ clean:
 	rm -rf build/*
 
 # Tests
-tests: test_rand test_simd test_bigint test_mont
+tests: test_simd test_bigint test_mont
 
 run_tests:
-	$(NODE) build/tests/test_rand.js
 	$(NODE) build/tests/test_simd.js
 	$(NODE) build/tests/test_bigint.js
 	$(NODE) build/tests/test_mont.js
@@ -41,14 +40,6 @@ test_simd:
 
 run_test_simd:
 	$(NODE) build/tests/test_simd.js
-
-test_rand: N := test_rand
-test_rand:
-	mkdir -p build/tests
-	$(CC) $(TEST_CFLAGS) tests/$(N).c -o build/tests/$(N).wasm -o build/tests/$(N).js
-
-run_test_rand:
-	$(NODE) build/tests/test_rand.js
 
 test_bigint: N := test_bigint
 test_bigint:
@@ -115,4 +106,7 @@ bench_mont_mul:
 
 run_bench_mont_mul: N := bench_mont_mul
 run_bench_mont_mul:
-	$(TIME) $(NODE) build/benchmarks/$(N).js
+	$(TIME) $(NODE) build/benchmarks/$(N).js $(filter-out $@,$(MAKECMDGOALS))
+
+%:
+	@:
