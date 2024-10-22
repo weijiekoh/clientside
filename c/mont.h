@@ -55,6 +55,12 @@ void sub_270(
 
 /// See
 /// https://github.com/mitschabaude/montgomery/blob/main/doc/zprize22.md#13-x-30-bit-multiplication
+/// As a side note, there's no point trying to use FMAs in Gregor's method:
+/// i.e. by representing a big integer as an array of f128s, where we store a
+/// 30-bit limb in the lower 64-bit lane. First off, when we compute a product,
+/// we need the higher and lower 30 bits, so we'll have to use Niall's
+/// int_full_product method anyway. Furthermore, we might as well use all 51
+/// bits available to us, so as to reduce the number of loop iterations.
 BigInt270 mont_mul_9x30(
     BigInt270 *ar,
     BigInt270 *br,
