@@ -10,6 +10,19 @@
 
 typedef struct {
     uint64_t v[9];
+} BigInt_9_29;
+typedef BigInt_9_29 BigInt261;
+
+/*
+ * Returns a new BigInt_9_30 initialized to zero.
+ */
+BigInt_9_29 bigint261_new() {
+    BigInt_9_29 result = {0}; // Initialize all elements to zero
+    return result;
+}
+
+typedef struct {
+    uint64_t v[9];
 } BigInt_9_30;
 typedef BigInt_9_30 BigInt270;
 
@@ -199,6 +212,53 @@ uint64_t bigint_sub(BigInt_8_32 *result, const BigInt_8_32 *a, const BigInt_8_32
     return borrow;
 }
 
+/*
+ * Converts a BigInt261 (little-endian) to a 64-character big-endian hex string.
+ */
+int hex_to_bigint261(const char *hex_str, BigInt261 *val) {
+    size_t hex_len = strlen(hex_str);
+
+    if (hex_len != 64) {
+        return -1; // Error: Input hex string must be 64 characters long
+    }
+
+    // Each limb is 29 bits, so we need to process the hex string accordingly.
+    // We will accumulate the bits into 29-bit limbs, starting from the least significant bits.
+    uint64_t current_limb = 0;
+    int bits_in_limb = 0;
+    int limb_index = 0;
+
+    for (int i = 63; i >= 0; i--) { // Start from the most significant hex digit
+        uint8_t nibble;
+        if (hex_str[i] >= '0' && hex_str[i] <= '9') {
+            nibble = hex_str[i] - '0';
+        } else if (hex_str[i] >= 'a' && hex_str[i] <= 'f') {
+            nibble = hex_str[i] - 'a' + 10;
+        } else if (hex_str[i] >= 'A' && hex_str[i] <= 'F') {
+            nibble = hex_str[i] - 'A' + 10;
+        } else {
+            return -2; // Error: Invalid character in hex string
+        }
+
+        // Add the nibble to the current limb
+        current_limb |= ((uint64_t)nibble << bits_in_limb);
+        bits_in_limb += 4;
+
+        // If we have accumulated 29 bits, store the limb and move to the next
+        if (bits_in_limb >= 29) {
+            val->v[limb_index++] = current_limb & 0x1FFFFFFF; // Mask to 29 bits
+            current_limb >>= 29;
+            bits_in_limb -= 29;
+        }
+    }
+
+    // Store any remaining bits as the last limb
+    if (limb_index < 9 && bits_in_limb > 0) {
+        val->v[limb_index] = current_limb;
+    }
+
+    return 0; // Success
+}
 
 /*
  * Converts a 64-character big-endian hex string to a BigInt270.
@@ -264,6 +324,36 @@ char* bigint270_to_hex(const BigInt270 *val) {
     for (int i = 0; i < 9; i++) {
         temp_value |= (val->v[i] << bits_in_temp);
         bits_in_temp += 30;
+
+        while (bits_in_temp >= 4 && hex_index >= 0) {
+            uint8_t nibble = temp_value & 0xF;
+            hex_str[hex_index--] = (nibble < 10) ? ('0' + nibble) : ('a' + nibble - 10);
+            temp_value >>= 4;
+            bits_in_temp -= 4;
+        }
+    }
+
+    // Ensure we have processed all bits and filled the entire hex string
+    while (hex_index >= 0) {
+        uint8_t nibble = temp_value & 0xF;
+        hex_str[hex_index--] = (nibble < 10) ? ('0' + nibble) : ('a' + nibble - 10);
+        temp_value >>= 4;
+    }
+
+    return hex_str;
+}
+
+char* bigint261_to_hex(const BigInt261 *val) {
+    static char hex_str[65]; // 64 characters + null terminator
+    hex_str[64] = '\0';
+
+    uint64_t temp_value = 0;
+    int bits_in_temp = 0;
+    int hex_index = 63;
+
+    for (int i = 0; i < 9; i++) {
+        temp_value |= (val->v[i] << bits_in_temp);
+        bits_in_temp += 29;
 
         while (bits_in_temp >= 4 && hex_index >= 0) {
             uint8_t nibble = temp_value & 0xF;

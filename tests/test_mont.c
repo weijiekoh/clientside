@@ -7,6 +7,35 @@ const size_t NUM_TESTS = 1024;
 char** get_mont_test_data();
 char** get_mont_f64_test_data();
 
+MU_TEST(test_mont_mul_9x29) {
+    char** hex_strs = get_mont_9x29_test_data();
+    char* p_hex = "12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001";
+    uint64_t mu = 536870911;
+    BigInt261 ar, br, p;
+    int result;
+    char* result_hex = malloc(65 * sizeof(char));
+    for (int i = 0; i < NUM_TESTS; i++) {
+        char* ar_hex = hex_strs[i * 3];
+        char* br_hex = hex_strs[i * 3 + 1];
+        char* abr_hex = hex_strs[i * 3 + 2];
+
+        result = hex_to_bigint261(p_hex, &p);
+        mu_check(result == 0);
+        result = hex_to_bigint261(ar_hex, &ar);
+        mu_check(result == 0);
+        result = hex_to_bigint261(br_hex, &br);
+        mu_check(result == 0);
+
+        BigInt261 res = mont_mul_9x29(&ar, &br, &p, mu);
+
+        result_hex = bigint261_to_hex(&res);
+        /*printf("%s\n", result_hex);*/
+        /*printf("%s\n", abr_hex);*/
+        mu_check(strcmp(result_hex, abr_hex) == 0);
+    }
+    free(result_hex);
+}
+
 MU_TEST(test_mont_mul_9x30) {
     char** hex_strs = get_mont_9x30_test_data();
     char* p_hex = "12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001";
@@ -211,6 +240,7 @@ MU_TEST_SUITE(test_suite) {
     MU_RUN_TEST(test_mont_mul_cios);
     MU_RUN_TEST(test_mont_mul_cios_f64_simd);
     MU_RUN_TEST(test_mont_mul_9x30);
+    MU_RUN_TEST(test_mont_mul_9x29);
 }
 
 int main(int argc, char *argv[]) {

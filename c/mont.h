@@ -4,12 +4,24 @@
 
 // TODO: 
 // - https://github.com/ingonyama-zk/papers/blob/main/multi_precision_fast_mod_mul.pdf
+// - Non-SIMD CIOS (29-bit limbs in arrays of uint64_t) from Mitscha-Baude
+//
 // Done:
 // - Non-SIMD CIOS (32-bit limbs in arrays of uint64_t) from Acar (see Mrabet et al)
 // - Non-SIMD CIOS (51-bit limbs in arrays of doubles) from BM17
 // - SIMD CIOS (51-bit limbs in arrays of doubles) from BM17
 // - Niall's SIMD algo using f64s
 // - Non-SIMD CIOS (30-bit limbs in arrays of uint64_t) from Mitscha-Baude
+
+/// Returns the higher 29 bits.
+static inline uint64_t hi_29(uint64_t v) {
+    return v >> 29;
+}
+
+/// Returns the lower 29 bits.
+static inline uint64_t lo_29(uint64_t v) {
+    return v & 0x1FFFFFFF;
+}
 
 /// Returns the higher 30 bits.
 static inline uint64_t hi_30(uint64_t v) {
@@ -19,6 +31,101 @@ static inline uint64_t hi_30(uint64_t v) {
 /// Returns the lower 30 bits.
 static inline uint64_t lo_30(uint64_t v) {
     return v & 0x3FFFFFFF;
+}
+
+/// Returns the higher 32 bits.
+static inline uint64_t hi(uint64_t v) {
+    return v >> 32;
+}
+
+/// Returns the lower 32 bits.
+static inline uint64_t lo(uint64_t v) {
+    return v & 0xFFFFFFFF;
+}
+
+bool gt_261(
+    uint64_t* s,
+    BigInt261 *p
+) {
+    int i;
+    for (int idx = 0; idx < 9; idx ++) {
+        i = 8 - idx;
+        if (s[i] < p->v[i]) {
+            return false;
+        } else if (s[i] > p->v[i]) {
+            return true;
+        }
+    }
+    return true;
+}
+
+void sub_261(
+    uint64_t* res,
+    uint64_t* s,
+    BigInt261 *p
+) {
+    uint64_t borrow = 0;
+    uint64_t mask = 0x1fffffff;
+
+    uint64_t diff;
+    for (int i = 0; i < 9; i ++) {
+        diff = s[i] - p->v[i] - borrow;
+        res[i] = diff & mask;
+        borrow = (diff >> 29) & 1;
+    }
+}
+
+BigInt261 mont_mul_9x29(
+    BigInt261 *ar,
+    BigInt261 *br,
+    BigInt261 *p,
+    uint64_t mu
+) {
+    const int nsafe = 32;
+    const size_t NUM_LIMBS = 9;
+    uint64_t s[9] = {0};
+
+    uint64_t t, t_lo, qi, c;
+    for (int i = 0; i < NUM_LIMBS; i ++) {
+        t = s[0] + ar->v[i] * br->v[0];
+        t_lo = lo_29(t);
+        qi = lo_29(mu * t_lo);
+        c = hi_29(t + qi * p->v[0]);
+
+        for (int j = 1; j < NUM_LIMBS - 1; j ++) {
+            t = s[j] + ar->v[i] * br->v[j] + qi * p->v[j];
+
+            if (j == 1) {
+                t += c;
+            }
+
+            s[j - 1] = t;
+        }
+
+        s[NUM_LIMBS - 2] = ar->v[i] * br->v[NUM_LIMBS - 1] + qi * p->v[NUM_LIMBS - 1];
+    }
+
+    c = 0;
+    for (int i = 0; i < NUM_LIMBS; i ++) {
+        c = s[i] + c;
+        s[i] = lo_29(c);
+        c = hi_29(c);
+    }
+
+    // Conditional reduction
+    BigInt261 res = bigint261_new();
+    if (gt_261(s, p)) {
+        uint64_t r[9];
+        sub_261(r, s, p);
+        for (int i = 0; i < 9; i ++) {
+            res.v[i] = r[i];
+        }
+    } else {
+        for (int i = 0; i < 9; i ++) {
+            res.v[i] = s[i];
+        }
+    }
+    return res;
 }
 
 bool gt_270(
@@ -145,16 +252,6 @@ BigInt270 mont_mul_9x30(
         }
     }
     return res;
-}
-
-/// Returns the higher 32 bits.
-static inline uint64_t hi(uint64_t v) {
-    return v >> 32;
-}
-
-/// Returns the lower 32 bits.
-static inline uint64_t lo(uint64_t v) {
-    return v & 0xFFFFFFFF;
 }
 
 /// Compares the most significant limb of val agaist that of p.

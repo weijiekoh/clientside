@@ -27,6 +27,25 @@ BigIntF255 reference_func_mont_mul_cios_f64_simd(
     return y;
 }
 
+BigInt261 reference_func_mont_mul_9x29(
+    BigInt261 *a,
+    BigInt261 *b,
+    BigInt261 *p,
+    uint64_t n0,
+    uint64_t cost
+) {
+    BigInt261 x = *a;
+    BigInt261 y = *b;
+    BigInt261 z;
+
+    for (uint64_t i = 0; i < cost; i ++) {
+        z = mont_mul_9x29(&x, &y, p, n0);
+        x = y;
+        y = z;
+    }
+    return y;
+}
+
 BigInt270 reference_func_mont_mul_9x30(
     BigInt270 *a,
     BigInt270 *b,
@@ -144,12 +163,14 @@ int main(int argc, char *argv[]) {
     double start_c, end_c;
     double start_d, end_d;
     double start_e, end_e;
+    double start_f, end_f;
 
     double avg_a = 0;
     double avg_b = 0;
     double avg_c = 0;
     double avg_d = 0;
     double avg_e = 0;
+    double avg_f = 0;
 
     // Benchmark bm17_non_simd_mont_mul
     for (int i = 0; i < num_runs; i ++) {
@@ -195,7 +216,7 @@ int main(int argc, char *argv[]) {
     br_hex = "0dfbb9d62fd1a0c9168072b6fe615e7626f0e5ae29e92ca41254de782f4bf8ce";
     char* expected_for_cios_f64_hex = "120af9332aca0835cba7214954b32e70d0a56db70e7f03011a0e9ea9b902a1d9";
 
-    // Convert to BigIntF255
+    // Benchmark mont_mul_cios_f64_simd
     result = hex_to_bigintf255(p_hex, &p_f);
     assert(result == 0);
     result = hex_to_bigintf255(ar_hex, &ar_f);
@@ -251,16 +272,43 @@ int main(int argc, char *argv[]) {
             assert(strcmp(res_hex, expected_for_9x30_hex) == 0);
     }
 
+    // Benchmark mont_mul_9x29
+    /*ar_hex = "029f0250e75829f788072e694cae0a8e4d92953c1741a467ea0d417db4219d17";*/
+    /*br_hex = "1176d92da635d769df02852caa1e4d4a45ed92c24a4b28d3bc011e0bd2fe3351";*/
+    /*char* expected_for_9x29 = "0fe7253ff5dea7ddded1f2193386abe1cbbd130c0fc0c0071d7c2a6e40a87603";*/
+    ar_hex = "0d3a69657d06317d0736bc97a156f051155991dec7e65881b25d3858d9f7affe";
+    br_hex = "02194df48190eb9fa29e870e0d2f6ab762a851c94383427d8f68d90d9cc0fcf4";
+    char* expected_for_9x29 = "076d42656adcf183ebe06a2fb8840c71b1018e61f7d62192d487edf04c2dcfdd";
+
+    BigInt261 ar_261, br_261, p_261, res_261;
+    result = hex_to_bigint261(p_hex, &p_261);
+    assert(result == 0);
+    result = hex_to_bigint261(ar_hex, &ar_261);
+    assert(result == 0);
+    result = hex_to_bigint261(br_hex, &br_261);
+    assert(result == 0);
+
+    for (int i = 0; i < num_runs; i ++) {
+        start_f = emscripten_get_now();
+        res_261 = reference_func_mont_mul_9x29(&ar_261, &br_261, &p_261, 536870911, cost);
+        end_f = emscripten_get_now();
+        avg_f = end_f - start_f;
+        char* res_hex = bigint261_to_hex(&res_261);
+        if (do_assert)
+            assert(strcmp(res_hex, expected_for_9x29) == 0);
+    }
+
     avg_a /= num_runs;
     avg_b /= num_runs;
     avg_c /= num_runs;
     avg_d /= num_runs;
     avg_e /= num_runs;
+    avg_f /= num_runs;
 
     printf("%llu Montgomery multiplications with BM17 (non-SIMD) took                             %f ms\n", cost, avg_a);
     printf("%llu Montgomery multiplications with BM17 (SIMD) took                                 %f ms\n", cost, avg_b);
     printf("%llu Montgomery multiplications with CIOS (non-SIMD, without gnark optimisation) took %f ms\n", cost, avg_c);
     printf("%llu Montgomery multiplications with f64s and CIOS (SIMD) took                        %f ms\n", cost, avg_d);
     printf("%llu Montgomery multiplications with 30-bit limbs took                                %f ms\n", cost, avg_e);
-
+    printf("%llu Montgomery multiplications with 29-bit limbs took                                %f ms\n", cost, avg_f);
 }
