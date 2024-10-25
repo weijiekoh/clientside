@@ -21,6 +21,12 @@ jobs:
           command: install
           #args: mdbook@0.4.25 mdbook-katex@0.3.7
           args: mdbook-katex@0.3.7
+
+      - name: Install mdbook-mermaid
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: mdbook-mermaid@0.14.0
           
       - name: Build html
         run: mdbook build ./docs
