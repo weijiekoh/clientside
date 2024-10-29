@@ -13,14 +13,14 @@ jobs:
       - name: Install mdbook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: '0.4.25'
+          mdbook-version: '0.4.40'
   
       - name: Install mdbook-katex
         uses: actions-rs/cargo@v1
         with:
           command: install
           #args: mdbook@0.4.25 mdbook-katex@0.3.7
-          args: mdbook-katex@0.3.7
+          args: mdbook-katex@0.9.0
 
       - name: Install mdbook-mermaid
         uses: actions-rs/cargo@v1
