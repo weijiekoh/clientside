@@ -2,7 +2,7 @@ name: publish
 
 on:
   push:
-    branches: ["docs"]
+    branches: ["master", "staging"]
 
 jobs:
   deploy:
@@ -13,14 +13,14 @@ jobs:
       - name: Install mdbook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: '0.4.25'
+          mdbook-version: '0.4.40'
   
       - name: Install mdbook-katex
         uses: actions-rs/cargo@v1
         with:
           command: install
           #args: mdbook@0.4.25 mdbook-katex@0.3.7
-          args: mdbook-katex@0.3.7
+          args: mdbook-katex@0.9.0
 
       - name: Install mdbook-mermaid
         uses: actions-rs/cargo@v1
@@ -29,10 +29,13 @@ jobs:
           args: mdbook-mermaid@0.14.0
           
       - name: Build html
-        run: mdbook build ./docs
+        run: mdbook build -d ./ ./docs
+
+      - name: Remove docs/.gitignore
+        run: rm ./docs/.gitignore
         
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/book/html
+          publish_dir: ./

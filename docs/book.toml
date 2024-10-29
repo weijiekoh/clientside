@@ -5,11 +5,7 @@ multilingual = false
 src = "src"
 title = "clientside"
 
-[output.html]
-mathjax-support = true
-additional-js = ["mermaid.min.js", "mermaid-init.js"]
-
-[output.katex]
+#[output.katex]
 
 [preprocessor.katex]
 after = ["links"]
@@ -18,3 +14,7 @@ after = ["links"]
 
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
+
+[output.html]
+mathjax-support = true
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
