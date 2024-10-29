@@ -368,7 +368,7 @@ BigIntF255 mont_mul_cios_f64_simd(
         }
 
         q0 = i64x2_extract_l(sum[0]) * n0;
-        q1 = i64x2_extract_h(sum[0]) * n0;
+        q1 = 0x4338000000000000L;//i64x2_extract_h(sum[0]) * n0;
         term = f64x2_sub(
                 i2f(
                     i64x2_add(

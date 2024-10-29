@@ -1,0 +1,20 @@
+[book]
+authors = ["Koh Wei Jie"]
+language = "en"
+multilingual = false
+src = "src"
+title = "clientside"
+
+[output.html]
+mathjax-support = true
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[output.katex]
+
+[preprocessor.katex]
+after = ["links"]
+#renderers = ["html"]
+#inline-delimiter = {left = "\\(", right = "\\)"}
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
