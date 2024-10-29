@@ -1,7 +1,10 @@
 compile_commands.json
 *.plist
 *.wasm
-*.js
+tests/*.js
+benchmarks/*.js
+build/tests/*.js
+build/benchmarks/*.js
 
 # Swap
 [._]*.s[a-v][a-z]
