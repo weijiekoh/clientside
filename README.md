@@ -11,7 +11,7 @@ There is much to be done:
     - [x] CIOS (Acar)
     - [x] CIOS (BM17)
     - [x] CIOS using f64s (Niall Emmart)
-    - [ ] CIOS using 30-bit limbs (Mitscha-Baude)
+    - [x] CIOS using 30-bit limbs (Mitscha-Baude)
 - [ ] Inline-assembly implementations of core low-level algorithms (big integer
       arithmetic and Montgomery multiplication)
 - [ ] Multi-scalar multiplication
