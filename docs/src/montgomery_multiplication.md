@@ -215,7 +215,8 @@ every time we compute a product (EZW18 p131).
 let mut hi = hi.to_bits() - c1.to_bits();
 ```
 
-Finally, we perform a conditional subtraction on the high bits, mask the low bits, and return the results.
+Finally, we perform a conditional subtraction on the high bits, mask the low
+bits, and return the results.
 
 ```rust!
 let lo = lo.to_bits() & mask;
@@ -234,7 +235,9 @@ algorithm you use performs carry propagation.
 
 When we perform:
 
-```rust let mut hi = a.mul_add(b, c1); ```
+```rust
+let mut hi = a.mul_add(b, c1);
+```
 
 What occurs behind the scenes is:
 
@@ -251,14 +254,20 @@ Let's visualise this with example values `a = 1596695558896492` and `b =
 The binary representation of the full (non-floating-point) product of `a * b +
 c1` is:
 
-```rust ╭╴ 104 10011110111010110001...10111011010010101001...1 ╰─ The top 52
-bits ────╯╰── Lower 51 bits ───╯ ╰─ The rounding bit (51) ```
+```rust 
+╭╴ 104 
+10011110111010110001...10111011010010101001...1 
+╰─ The top 52 bits ────╯╰── Lower 51 bits ───╯╰─ The rounding bit (51) 
+```
 
 Compare the above with the binary representation of the mantissa of the
 floating-point value `hi = a.mul_add(b, c1)`:
 
-```rust 01000110011000111101110101100010110110...11 │╰─ e=103──╯╰── mantissa
-(rounded up) ────╯ ╰╴ Sign (positive)                     52 ╯ ```
+```rust
+01000110011000111101110101100010110110...11 
+│╰─ e=103──╯╰── mantissa (rounded up) ────╯ 
+╰╴ Sign (positive)                     52 ╯
+```
 
 Observe that the mantissa of `hi` is greater by 1. This is because the CPU
 rounds this floating point value up as the 51st bit is 1.
@@ -266,7 +275,9 @@ rounds this floating point value up as the 51st bit is 1.
 To understand how we get the lower 52 bits, let us expand the computation of
 `sub` and `lo`:
 
-```rust let sub = c2 - hi; let mut lo = a.mul_add(b, sub); ```
+```rust 
+let sub = c2 - hi; let mut lo = a.mul_add(b, sub); 
+```
 
 `sub` is negative, and contains the high bits. Subtracting `sub` from `a * b`
 zeros out the high bits, forces the exponent to 52, and leaves us with the
