@@ -357,7 +357,8 @@ every time we compute a product (EZW18 p131).</p>
 </span><span class="boring">fn main() {
 </span>let mut hi = hi.to_bits() - c1.to_bits();
 <span class="boring">}</span></code></pre></pre>
-<p>Finally, we perform a conditional subtraction on the high bits, mask the low bits, and return the results.</p>
+<p>Finally, we perform a conditional subtraction on the high bits, mask the low
+bits, and return the results.</p>
 <pre><pre class="playground"><code class="language-rust!"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let lo = lo.to_bits() &amp; mask;
@@ -372,7 +373,10 @@ return (hi, lo);
 algorithm you use performs carry propagation.</p>
 <h3 id="explanation"><a class="header" href="#explanation">Explanation</a></h3>
 <p>When we perform:</p>
-<p><code>rust let mut hi = a.mul_add(b, c1); </code></p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut hi = a.mul_add(b, c1);
+<span class="boring">}</span></code></pre></pre>
 <p>What occurs behind the scenes is:</p>
 <ol>
 <li>Computation of <code>a * b</code> with infinite precision, which will have an exponent
@@ -384,97 +388,90 @@ not rounded up if it is 0.</li>
 </ol>
 <p>Let's visualise this with example values <code>a = 1596695558896492</code> and <code>b = 1049164860932151</code>.</p>
 <p>The binary representation of the full (non-floating-point) product of <code>a * b + c1</code> is:</p>
-<pre><pre class="playground"><code class="language-rust ╭╴ 104 10011110111010110001...10111011010010101001...1 ╰─ The top 52"><span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>bits ────╯╰── Lower 51 bits ───╯ ╰─ The rounding bit (51) ```
-
-Compare the above with the binary representation of the mantissa of the
-floating-point value `hi = a.mul_add(b, c1)`:
-
-```rust 01000110011000111101110101100010110110...11 │╰─ e=103──╯╰── mantissa
-(rounded up) ────╯ ╰╴ Sign (positive)                     52 ╯ ```
-
-Observe that the mantissa of `hi` is greater by 1. This is because the CPU
-rounds this floating point value up as the 51st bit is 1.
-
-To understand how we get the lower 52 bits, let us expand the computation of
-`sub` and `lo`:
-
-```rust let sub = c2 - hi; let mut lo = a.mul_add(b, sub); ```
-
-`sub` is negative, and contains the high bits. Subtracting `sub` from `a * b`
-zeros out the high bits, forces the exponent to 52, and leaves us with the
-lower 52 bits.
-
+</span>╭╴ 104 
+10011110111010110001...10111011010010101001...1 
+╰─ The top 52 bits ────╯╰── Lower 51 bits ───╯╰─ The rounding bit (51) 
 <span class="boring">}</span></code></pre></pre>
-<p>(a * b) + sub                     =
+<p>Compare the above with the binary representation of the mantissa of the
+floating-point value <code>hi = a.mul_add(b, c1)</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>01000110011000111101110101100010110110...11 
+│╰─ e=103──╯╰── mantissa (rounded up) ────╯ 
+╰╴ Sign (positive)                     52 ╯
+<span class="boring">}</span></code></pre></pre>
+<p>Observe that the mantissa of <code>hi</code> is greater by 1. This is because the CPU
+rounds this floating point value up as the 51st bit is 1.</p>
+<p>To understand how we get the lower 52 bits, let us expand the computation of
+<code>sub</code> and <code>lo</code>:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let sub = c2 - hi; let mut lo = a.mul_add(b, sub); 
+<span class="boring">}</span></code></pre></pre>
+<p><code>sub</code> is negative, and contains the high bits. Subtracting <code>sub</code> from <code>a * b</code>
+zeros out the high bits, forces the exponent to 52, and leaves us with the
+lower 52 bits.</p>
+<pre><code>(a * b) + sub                     =
 (a * b) + (c2              ) - hi =
 (a * b) + (2^103 + 3 * 2^51) - hi
-│             │           ╰─ Subtracts the high bits and 2^103 from c2
-│             ╰─ Sets the exponent of the result to 52, and sets bit 52 to 1
-╰─ Computes a * b with full precision (102 bits)</p>
-<pre><code>
-All that is left is to subtract 1 from `hi` if the leftmost (51st) bit of `lo`
-is 1, and apply a bitmask to `lo` to ensure that we only have the lower 51
-bits. 
-
-### Finite Field Implementation 
-
-Next, Emmart's method incorporates the abovementioned FMA-based limb product
+   │             │           ╰─ Subtracts the high bits and 2^103 from c2
+   │             ╰─ Sets the exponent of the result to 52, and sets bit 52 to 1
+   ╰─ Computes a * b with full precision (102 bits)
+</code></pre>
+<p>All that is left is to subtract 1 from <code>hi</code> if the leftmost (51st) bit of <code>lo</code>
+is 1, and apply a bitmask to <code>lo</code> to ensure that we only have the lower 51
+bits.</p>
+<h3 id="finite-field-implementation"><a class="header" href="#finite-field-implementation">Finite Field Implementation</a></h3>
+<p>Next, Emmart's method incorporates the abovementioned FMA-based limb product
 algorithm into CIOS Montgomery multiplication. This can be seen in his
-`fieldPairMul()` code in
-[FieldPair.c](https://github.com/z-prize/2023-entries/blob/main/prize-2-msm-wasm/prize-2b-twisted-edwards/yrrid-snarkify/yrrid/FieldPair.c).
-The implementation references **algorithm 9** in
-[EZW18](https://ieeexplore.ieee.org/document/8464792/), but works in a single
-thread.
-
-To understand how it works, read it along with the following notes:
-
-- **Extracting high and low terms**: The constants `c0` to `c4` are used to
-  extract the high and low terms, as described above.
-- **Hardcoded modulus**: The limbs of &lt;span class="katex"&gt;&lt;span class="katex-html" aria-hidden="true"&gt;&lt;span class="base"&gt;&lt;span class="strut" style="height:0.625em;vertical-align:-0.1944em;"&gt;&lt;/span&gt;&lt;span class="mord mathnormal"&gt;p&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; are hardcoded in `p[]`.
-- **Initial values of `sum[]`**: As described in EZW18 (p133), the initial
-  values of the `sum` array are carefully constructed so that they get
-  cancelled out by the first 12 bits of each term accumulated by the CIOS
-  algorithm.
-- **Lack of carry propagation or a final conditional subtraction**:
-  `fieldPairMul()` does not perform carry propagation, but carries can be
-  resolved by the parent function by calling
-  [`fieldPairResolve()`](https://github.com/z-prize/2023-entries/blob/main/prize-2-msm-wasm/prize-2b-twisted-edwards/yrrid-snarkify/yrrid/FieldPair.c#L111).
-  Additionally,`fieldPairMul()` does not perform a conditional subtraction;
-  rather, the parent function is responsible for invoking either
-  `fieldPairReduce()` (which can reduce a big integer between &lt;span class="katex"&gt;&lt;span class="katex-html" aria-hidden="true"&gt;&lt;span class="base"&gt;&lt;span class="strut" style="height:0.6444em;"&gt;&lt;/span&gt;&lt;span class="mord"&gt;0&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class="katex"&gt;&lt;span class="katex-html" aria-hidden="true"&gt;&lt;span class="base"&gt;&lt;span class="strut" style="height:0.8389em;vertical-align:-0.1944em;"&gt;&lt;/span&gt;&lt;span class="mord"&gt;6&lt;/span&gt;&lt;span class="mord mathnormal"&gt;p&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; to
-  modulo &lt;span class="katex"&gt;&lt;span class="katex-html" aria-hidden="true"&gt;&lt;span class="base"&gt;&lt;span class="strut" style="height:0.625em;vertical-align:-0.1944em;"&gt;&lt;/span&gt;&lt;span class="mord mathnormal"&gt;p&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;, albeit with some exceptions), or `fieldPairFullReduceResolve()`
-  which ensures that a reduction is performed. The reason for unbundling the
-  reduction and carry propagation is to optimise elliptic curve operations, by
-  performing a conditional subtraction after some number of field
-  multiplications, rather than after every single one.
-
-## Mitscha-Baude's method
-
-Gregor Mitscha-Baude's submission to ZPrize 2022 uses reduced-radix big integer
+<code>fieldPairMul()</code> code in
+<a href="https://github.com/z-prize/2023-entries/blob/main/prize-2-msm-wasm/prize-2b-twisted-edwards/yrrid-snarkify/yrrid/FieldPair.c">FieldPair.c</a>.
+The implementation references <strong>algorithm 9</strong> in
+<a href="https://ieeexplore.ieee.org/document/8464792/">EZW18</a>, but works in a single
+thread.</p>
+<p>To understand how it works, read it along with the following notes:</p>
+<ul>
+<li><strong>Extracting high and low terms</strong>: The constants <code>c0</code> to <code>c4</code> are used to
+extract the high and low terms, as described above.</li>
+<li><strong>Hardcoded modulus</strong>: The limbs of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal">p</span></span></span></span> are hardcoded in <code>p[]</code>.</li>
+<li><strong>Initial values of <code>sum[]</code></strong>: As described in EZW18 (p133), the initial
+values of the <code>sum</code> array are carefully constructed so that they get
+cancelled out by the first 12 bits of each term accumulated by the CIOS
+algorithm.</li>
+<li><strong>Lack of carry propagation or a final conditional subtraction</strong>:
+<code>fieldPairMul()</code> does not perform carry propagation, but carries can be
+resolved by the parent function by calling
+<a href="https://github.com/z-prize/2023-entries/blob/main/prize-2-msm-wasm/prize-2b-twisted-edwards/yrrid-snarkify/yrrid/FieldPair.c#L111"><code>fieldPairResolve()</code></a>.
+Additionally,<code>fieldPairMul()</code> does not perform a conditional subtraction;
+rather, the parent function is responsible for invoking either
+<code>fieldPairReduce()</code> (which can reduce a big integer between <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8389em;vertical-align:-0.1944em;"></span><span class="mord">6</span><span class="mord mathnormal">p</span></span></span></span> to
+modulo <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal">p</span></span></span></span>, albeit with some exceptions), or <code>fieldPairFullReduceResolve()</code>
+which ensures that a reduction is performed. The reason for unbundling the
+reduction and carry propagation is to optimise elliptic curve operations, by
+performing a conditional subtraction after some number of field
+multiplications, rather than after every single one.</li>
+</ul>
+<h2 id="mitscha-baudes-method"><a class="header" href="#mitscha-baudes-method">Mitscha-Baude's method</a></h2>
+<p>Gregor Mitscha-Baude's submission to ZPrize 2022 uses reduced-radix big integer
 representation (29 or 30 bits), along with a custom Montgomery multiplication
 algorithm that minimises bitshifts. This allows his code to outperform the
 classic CIOS method which uses 32-bit limbs. He provides a full description of
-his method in his [`montgomery`
-repository](https://github.com/mitschabaude/montgomery/blob/main/doc/zprize22.md#13-x-30-bit-multiplication).
-
-The key insight is that 32-bit limbs require a carry after every product, which
+his method in his <a href="https://github.com/mitschabaude/montgomery/blob/main/doc/zprize22.md#13-x-30-bit-multiplication"><code>montgomery</code>
+repository</a>.</p>
+<p>The key insight is that 32-bit limbs require a carry after every product, which
 involves an addition, a bitwise AND, and a bitshift. If, however, smaller limbs
 are used, multiple products can be done without carries. For 29-bit limbs, that
 number is 64, and 16 for 30-bit limbs. A further minor optimisation is that
 based on the limb size, some conditional branches can be omitted from
-Mitscha-Baude's algorithm.
-
-## Benchmarks
-
-The following benchmarks were made on a 13th Gen Intel(R) Core(TM) i7-13700HX
-laptop running the following algorithm, which executes `cost` Montgomery
+Mitscha-Baude's algorithm.</p>
+<h2 id="benchmarks"><a class="header" href="#benchmarks">Benchmarks</a></h2>
+<p>The following benchmarks were made on a 13th Gen Intel(R) Core(TM) i7-13700HX
+laptop running the following algorithm, which executes <code>cost</code> Montgomery
 multiplications. Since each loop iteration depends on the previous one, the
-multiplications run in serial.
-
-```rs
-fn expensive_function(ar, br, p, n0, cost){
+multiplications run in serial.</p>
+<pre><code class="language-rs">fn expensive_function(ar, br, p, n0, cost){
     x = a
     y = b
     for _ in 0..cost {
