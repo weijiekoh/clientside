@@ -26,7 +26,7 @@ graph LR
 
 To illustrate how this would work on the abovementioned exponentiation example,
 where we wish to efficiently compute $y = a^e \mod p$, we would first compute
-$aR \mod p$ (using $\mathsf{MontMul(a, R^2)}$), perform $e$ Montgomery
+$aR \mod p$ using $\mathsf{MontMul(a, R^2)}$, perform $e$ Montgomery
 multiplications, and then convert the result $y$ out of Montgomery form by
 computing $\mathsf{MontMul}(a^eR, 1) = a^e$.
 
@@ -57,12 +57,14 @@ The steps of the algorithm are:
 3. If $c \ge p$ then $c \leftarrow c - p$.
 4. Return $c$.
 
+
 Substituting $\mu$ in step 1, we have $q \leftarrow -p^{-1}x$. When we multiply
 $q$ by $p$ in step 2, the $-p^{-1}$ and $p$ terms cancel each other out,
-leaving us with some nonzero value equivalent to $x \mod R$ in the integer
-domain. Next, dividing by $R$ is equivalent to multiplying by $R^{-1}$, giving
-us our result $c = xR^{-1}$. A final subtraction (step 3) may be needed to
-bring $c$ to the desired range $0 \le c \lt p$.
+leaving us with $-x \mod R$ in the integer domain. Crucially, $x + pq \equiv x
+- x$ is divisible by $R$ but equivalent to $x \mod p$. Next, dividing by $R$ is
+equivalent to multiplying by $R^{-1}$, giving us our result $c = xR^{-1}$. A
+final subtraction (step 3) may be needed to bring $c$ to the desired range $0
+\le c \lt p$.
 
 Addition and subtraction of values in Montgomery form work as per usual due to
 the [distributive law](https://en.wikipedia.org/wiki/Distributive_property):
