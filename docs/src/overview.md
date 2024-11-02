@@ -15,13 +15,14 @@ curve and finite field
 arithmetic](https://www.zprize.io/blog/announcing-zprize-results), as well as
 speeding up the [multi-scalar multiplication
 algorithm](https://www.zprize.io/blog/announcing-the-2023-zprize-winners) in
-the browser using technologies such as WASM and WebGPU. All of this work has
-been open-sourced, and anyone can adopt these optimisations.
+the browser using technologies such as WASM and
+[WebGPU](https://en.wikipedia.org/wiki/WebGPU). All of this work has been
+open-sourced, and anyone can adopt these optimisations.
 
 Yet, there are still some gaps: some techniques are not fully documented, and
-engineers need to look up various academic papers and dissect complicated code
-in order to understand how they work. Furthermore, while benchmarks of the
-contest submissions were performed by the ZPrize judges, benchmarks of
+engineers need to look up various academic papers and dissect complicated
+codebases in order to understand how they work. Furthermore, while benchmarks
+of the contest submissions were performed by the ZPrize judges, benchmarks of
 individual techniques, such as different ways to perform Montgomery
 multiplication, have not yet been done.
 

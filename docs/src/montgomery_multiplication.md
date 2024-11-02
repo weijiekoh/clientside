@@ -31,7 +31,7 @@ multiplications, and then convert the result $y$ out of Montgomery form by
 computing $\mathsf{MontMul}(a^eR, 1) = a^e$.
 
 $\mathsf{MontMul}$ is a combination of two algorithms: multiplication and
-reduction. In practice, these algorithms are merged, but in gain intuition
+reduction. In practice, these algorithms are merged, but to gain intuition
 about how it works, it is key to understand how Montgomery reduction works.
 
 The Montgomery reduction algorithm is as follows:
@@ -40,7 +40,9 @@ The Montgomery reduction algorithm is as follows:
 |-|-|-|
 | $p$ | The field modulus. | Must be odd. |
 | $x$ | The value to reduce. | $0 \le x \le p^2$ |
-| $R$ | The Montgomery radix. | Coprime to and greater than $p$. Must be a power of 2, usually $2^{wn}$, where $wn$ is the limb size multiplied by the number of limbs. |
+| $w$ | The number of bits in a word. | Must fit within a single CPU-native data type, such as a 32 or 64-bit unsigned integer. |
+| $n$ | The number of words. | Must be large enouch such that $wn$ is equal to or larger than the bit-length of $p$. |
+| $R$ | The Montgomery radix. | Coprime to and greater than $p$. Must be a power of 2, usually $2^{wn}$. |
 | $\mu$ | The precomputed Montgomery constant. | $-p^{-1} \mod R$, computed using the extended Euclidian algorithm. |
 
 The output is $c \equiv xR^{-1} \mod p$. As long as the input $x \equiv aR *
@@ -57,25 +59,27 @@ The steps of the algorithm are:
 3. If $c \ge p$ then $c \leftarrow c - p$.
 4. Return $c$.
 
+Essentially, this algorithm adds a multiple of $p$ to $x$ so that the result is a multiple of $R$ and is still equivalent to $x \mod p$. Since dividing by $R$ is efficient, we can arrive at $xR^{-1}$.
 
-Substituting $\mu$ in step 1, we have $q \leftarrow -p^{-1}x$. When we multiply
-$q$ by $p$ in step 2, the $-p^{-1}$ and $p$ terms cancel each other out,
-leaving us with $-x \mod R$ in the integer domain. Crucially, $x + pq \equiv x
-- x$ is divisible by $R$ but equivalent to $x \mod p$. Next, dividing by $R$ is
-equivalent to multiplying by $R^{-1}$, giving us our result $c = xR^{-1}$. A
-final subtraction (step 3) may be needed to bring $c$ to the desired range $0
-\le c \lt p$.
+Let us break the algorithm down step-by-step.
 
-Addition and subtraction of values in Montgomery form work as per usual due to
-the [distributive law](https://en.wikipedia.org/wiki/Distributive_property):
+Substituting $\mu$ in step 1:
+1. $q \leftarrow \mu x\mod R \equiv -p^{-1}x \mod R$
+
+When we multiply $q$ by $p$ in step 2, the $-p^{-1}$ and $p$ terms cancel each other out, leaving us with $-x \mod R$ in the integer domain. $x + pq \equiv x - x$ is divisible by $R$ but equivalent to $x \mod p$.
+
+2. $c \leftarrow (x + pq) / R \equiv (x - pp^{-1}x) / R \equiv 0 / R \mod R$. Note that $x - pp^{-1}x$, is nonzero $\mod p$, but is a multiple of $R$ as intended.
+
+A final subtraction (step 3) may be needed to bring $c$ to the desired range $0 \le c \lt p$.
+
+3. If $c \ge p$ then $c \leftarrow c - p$.
+
+A fuller description of the above steps can be found in [*Montgomery Arithmetic from a Software Perspective*](https://eprint.iacr.org/2017/1057.pdf) by Joppe Bos (section 2), including a proof that $(x + pq) / R \le 2p$, so only one conditional subtraction is needed (p4).
+
+Finally, addition and subtraction of values in Montgomery form work as per usual due to the [distributive law](https://en.wikipedia.org/wiki/Distributive_property), and no special algorithms are needed for them:
 
 $aR + bR = (a + b)R$
 $aR - bR = (a - b)R$
-
-A fuller description of the above steps can be found in [*Montgomery Arithmetic
-from a Software Perspective*](https://eprint.iacr.org/2017/1057.pdf) by Joppe
-Bos (section 2), including a proof that only one conditional subtraction is
-needed (p4).
 
 There are several variants of the Montgomery modular multiplication algorithm,
 and they perform differently depending on the platform. Since we target WASM in
@@ -173,7 +177,7 @@ the developer has control over the rounding mode of any of these operations
   infinite precision, and that rounding occurs at the addition step.
 - `-`: Subtraction.
 - `to_u64()` or `f64::to_bits()`: Conversion to IEEE-754 formatted bits. In C,
-  one can use a `memcpy` to do this conversion.
+  one can use a `memcpy()` to do this conversion.
 
 By the IEEE-754 standard, 64-bit floating-point values have the following bit
 layout:
@@ -257,9 +261,10 @@ The binary representation of the full (non-floating-point) product of `a * b +
 c1` is:
 
 ```rust 
-╭╴ 104 
-10011110111010110001...10111011010010101001...1 
-╰─ The top 52 bits ────╯╰── Lower 51 bits ───╯╰─ The rounding bit (51) 
+╭╴ 104
+10010101001001001101... 10110 101111110101001101101...10100
+ ╰─ The higher 52 bits  ────╯ ╰─ The lower 51 bits    ────╯
+                              ╰─ The rounding bit
 ```
 
 Compare the above with the binary representation of the mantissa of the
@@ -281,7 +286,7 @@ To understand how we get the lower 52 bits, let us expand the computation of
 let sub = c2 - hi; let mut lo = a.mul_add(b, sub); 
 ```
 
-`sub` is negative, and contains the high bits. Subtracting `sub` from `a * b`
+`sub` is negative, and contains the high bits. Adding `sub` to `a * b`
 zeros out the high bits, forces the exponent to 52, and leaves us with the
 lower 52 bits.
 
@@ -308,27 +313,18 @@ The implementation references **algorithm 9** in
 [EZW18](https://ieeexplore.ieee.org/document/8464792/), but works in a single
 thread.
 
-To understand how it works, read it along with the following notes:
-
-- **Extracting high and low terms**: The constants `c0` to `c4` are used to
-  extract the high and low terms, as described above.
-- **Hardcoded modulus**: The limbs of $p$ are hardcoded in `p[]`.
-- **Initial values of `sum[]`**: As described in EZW18 (p133), the initial
-  values of the `sum` array are carefully constructed so that they get
-  cancelled out by the first 12 bits of each term accumulated by the CIOS
-  algorithm.
-- **Lack of carry propagation or a final conditional subtraction**:
-  `fieldPairMul()` does not perform carry propagation, but carries can be
-  resolved by the parent function by calling
-  [`fieldPairResolve()`](https://github.com/z-prize/2023-entries/blob/main/prize-2-msm-wasm/prize-2b-twisted-edwards/yrrid-snarkify/yrrid/FieldPair.c#L111).
-  Additionally,`fieldPairMul()` does not perform a conditional subtraction;
-  rather, the parent function is responsible for invoking either
-  `fieldPairReduce()` (which can reduce a big integer between $0$ and $6p$ to
-  modulo $p$, albeit with some exceptions), or `fieldPairFullReduceResolve()`
-  which ensures that a reduction is performed. The reason for unbundling the
-  reduction and carry propagation is to optimise elliptic curve operations, by
-  performing a conditional subtraction after some number of field
-  multiplications, rather than after every single one.
+Another optimisation that Emmart's method is that it deliberately decouples
+carry propagation and conditional subtraction from `fieldPairMul()`. Rather,
+carries can be resolved by the parent function by calling
+[`fieldPairResolve()`](https://github.com/z-prize/2023-entries/blob/main/prize-2-msm-wasm/prize-2b-twisted-edwards/yrrid-snarkify/yrrid/FieldPair.c#L111).
+Additionally, the parent function is responsible for invoking either
+`fieldPairReduce()` (which can reduce a big integer between $0$ and $6p$ to
+modulo $p$, albeit with some exceptions), or `fieldPairFullReduceResolve()`
+which ensures that a reduction is performed. The reason for decoupling the
+reduction and carry propagation is to optimise elliptic curve operations, which
+involve a series of multiprecision arithmetic operations. By performing a
+conditional subtraction only after some number of field multiplications, rather
+than after every single one, less computation is required.
 
 ## Mitscha-Baude's method
 
