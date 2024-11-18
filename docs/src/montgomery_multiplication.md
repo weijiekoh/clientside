@@ -4,7 +4,7 @@
 
 The operation $\mathsf{MontMul}(x, y)$ yields $xyR^{-1}$. Let $x \equiv aR$ and $b \equiv bR$. Applying $\mathsf{MontMul}$ to $x$ and $y$, which are in Montgomery form, will yield $xyR^{-1} \equiv abR$, which is by definition also in Montgomery form. As such, multiple $\mathsf{MontMul}$ operations can be chained.
 
-The key idea is that it is faster to compute the Montgomery multiplication of two values already in Montgomery form than to multiply the original values and then reduce them to the field order. As such, this technique is best used when one has to perform a large number of field multiplications starting out from a relatively small number of input field elements. The most straightforward example of this is exponentiation: it is more efficient to use this technique to compute $a^e \mod p$ when $e$ is relatively large compared to the cost of computing $aR$ from $a$ and $a^e$ from $(a^e)R$.
+The key idea is that it is faster to compute the Montgomery multiplication of two values already in Montgomery form than to multiply the original values and then reduce them to the field order. As such, this technique is best used when one has to perform a large number of field multiplications starting out from a relatively small number of input field elements. The most straightforward example of this is naive exponentiation: it is more efficient to use this technique to compute $a^e \mod p$ when $e$ is relatively large compared to the cost of computing $aR$ from $a$ and $a^e$ from $(a^e)R$. (Note that this example is merely illustrative: in practice, it would be more efficient to achieve exponentiation via repeated squaring.)
 
 ```mermaid
 graph LR
@@ -17,7 +17,7 @@ graph LR
     classDef montmul font-weight:bold
 ```
 
-To illustrate how this would work on the abovementioned exponentiation example, where one wishes to efficiently compute $y = a^e \mod p$, one would first compute $aR \mod p$ using $\mathsf{MontMul(a, R^2)}$, perform $e$ Montgomery multiplications, and then convert the result $y$ out of Montgomery form by computing $\mathsf{MontMul}(a^eR, 1) = a^e$.
+To illustrate how this would work on the abovementioned example, where one wishes to efficiently compute $y = a^e \mod p$, one would first compute $aR \mod p$ using $\mathsf{MontMul}(a, R^2)$, perform $e$ Montgomery multiplications, and then convert the result out of Montgomery form by computing $\mathsf{MontMul}(a^eR, 1) = a^e$.
 
 $\mathsf{MontMul}$ is a combination of two algorithms: multiplication and reduction. In practice, these algorithms are merged, but to gain intuition about how it works, it is key to first understand how Montgomery reduction works at a high level.
 
@@ -57,7 +57,7 @@ A final subtraction (step 3) may be applied to bring $c$ to the desired range $0
 
 A fuller description of the above steps can be found in [*Montgomery Arithmetic from a Software Perspective*](https://eprint.iacr.org/2017/1057.pdf) by Joppe Bos (section 2), including a proof that $(x + pq) / R \le 2p$, so only one conditional subtraction is needed (p4).
 
-Finally, addition and subtraction of values in Montgomery form work as per usual due to the [distributive law](https://en.wikipedia.org/wiki/Distributive_property), and no special algorithms are needed for them:
+Finally, addition and subtraction algorithms work for values in Montgomery form as per usual due to the [distributive law](https://en.wikipedia.org/wiki/Distributive_property), and no special algorithms are needed for them:
 
 $aR + bR = (a + b)R$
 $aR - bR = (a - b)R$
@@ -66,7 +66,7 @@ $aR - bR = (a - b)R$
 
 Next, I present variants of Montgomery multiplication algorithms which operate on [multiprecision values](https://en.wikipedia.org/wiki/Arbitrary-precision_arithmetic), also known as big integers. The maximum size of a multiprecision value (e.g. 256 bits) is far greater than the largest available word size in most computer processors (e.g. 64 bits), so multiple limbs are needed.
 
-Each of these methods require the precomputed most significant limb of $p^{-1} \mod R$, \ also known as $\mu$. It performs the same role as step 1 of the high-level Montgomery multiplication algorithm to cancel out the $p$ term ($q \leftarrow \mu x\mod R$) as described above, except that it operates in the multiprecision context.
+Each of these methods require the precomputed most significant limb of $p^{-1} \mod R$, also known as $\mu$. It performs the same role as step 1 of the high-level Montgomery multiplication algorithm to cancel out the $p$ term ($q \leftarrow \mu x\mod R$) as described above.
 
 ## The Coarsely Integrated Operand Scanning (CIOS) method
 
@@ -78,17 +78,13 @@ It is worth noting that researchers at the gnark team at ConsenSys made [a furth
 
 Acar's paper also introduces the Finely Integrated Operand Scanning (FIOS) method (p7), which has just one inner loop for multiplication and reduction. Some optimised variants of Montgomery algorithms use it without explicitly mentioning its name; Mitscha-Baude, for instance, refers to it as the "iterative algorithm", while Bos (2017) presents a version of it but does not identify its origin.
 
-## The Separated Operand Scanning (SOS) method
-
-The Separated Operand Scanning (SOS) method may considered a potentially more performant Montgomery squaring algorithm, even if it requires more space to store the intermediate results. Since it performs the multiplication before reduction, about half of of the term multiplications can be skipped (p6). More benchmarks are needed to validate this claim.
-
 # Optimised variants
 
 ## Bos' method
 
-[*Montgomery Multiplication from a Software Perspective*](https://eprint.iacr.org/2017/1057.pdf) (2017) by Joppe Bos provides a version of the Montgomery multiplication algorithm that is suitable for SIMD-enabled processors. Single Instruction, Multiple Data (SIMD) refers to CPU operations which apply to multiple pieces of concatenated data, such as addition of pairs of 64-bit values in a single opcode.
+[*Montgomery Multiplication from a Software Perspective*](https://eprint.iacr.org/2017/1057.pdf) (2017) by Joppe Bos provides a version of the Montgomery multiplication algorithm that is suitable for SIMD-enabled processors. [Single Instruction, Multiple Data](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data) (SIMD) refers to CPU operations which apply to multiple pieces of concatenated data, such as addition of pairs of 64-bit values in a single opcode.
 
-For instance: `simd_add(a0a1, b0b1) = c0c1` where `c0 = a0 + b0` and `c1 = a1 + b1`, and `a0a1` and `b0b1` are SIMD vector types which can be thought of as simply the concatenation of 32 or 64-bit variables.
+For instance: `simd_add(a0a1, b0b1) = c0c1` where `c0 = a0 + b0` and `c1 = a1 + b1`, and `a0a1`, `b0b1`, and `c0c1` are SIMD vector types which can be thought of as simply the concatenation of 32 or 64-bit variables.
 
 Bos adapts the FIOS method to use two-way SIMD instructions, thereby achieving the same computation with fewer steps. It is important to note that this is not the same as multi-threading, even though Bos illustrates the SIMD-enabled algorithm as two separate computations (p16).
 
@@ -96,7 +92,7 @@ While this technique may be faster than its non-SIMD counterparts on processors 
 
 ## Emmart's method
 
-Niall Emmart's submission to ZPrize 2023 contains a Montgomery multiplication mostly algorithm based on the `f64x2_relaxed_madd` relaxed SIMD WASM opcode. Each field element is an array of [64-bit floating point variables](https://en.wikipedia.org/wiki/Double-precision_floating-point_format). Each mantissa of these values holds a 51-bit limb. This technique draws upon his paper [*Faster Modular Exponentiation Using Double Precision Floating Point Arithmetic on the GPU*](https://ieeexplore.ieee.org/document/8464792/) (EZW18) but uses 51 instead of 52 bits per limb as the developer cannot control the opcode's rounding mode.
+Niall Emmart's submission to ZPrize 2023 contains a Montgomery multiplication algorithm mostly based on the `f64x2_relaxed_madd` relaxed SIMD WASM opcode. Each field element is an array of [64-bit floating point variables](https://en.wikipedia.org/wiki/Double-precision_floating-point_format). Each mantissa of these values holds a 51-bit limb. This technique draws upon his paper [*Faster Modular Exponentiation Using Double Precision Floating Point Arithmetic on the GPU*](https://ieeexplore.ieee.org/document/8464792/) (EZW18) but uses 51 instead of 52 bits per limb as the developer cannot control the opcode's rounding mode.
 
 As mentioned earlier, web browsers[ only translate some WASM SIMD instructions into native SIMD instructions](https://emscripten.org/docs/porting/simd.html#optimization-considerations). As such, Emmart's method outperforms Bos's method described above. As will be discussed below, however, Emmart's also uses the `i64x2_add` SIMD instruction, which unfortunately leads to some performance loss.
 
@@ -110,9 +106,9 @@ Each limb and term are stored in an 64-bit floating point data type defined by t
 
 Emmart's method requires the following operations on `f64` values. In WASM, the developer does not have control over the rounding mode of any of these operations.
 
-- `mul_add`: [Fused multiply-and-add](https://en.wikipedia.org/wiki/Multiply%E2%80%93accumulate_operation). We assume that the multiplication occurs with infinite precision, and that rounding occurs at the addition step.
+- `mul_add`: [Fused multiply-and-add](https://en.wikipedia.org/wiki/Multiply%E2%80%93accumulate_operation). This first performs multiplication occurs with infinite precision, and then addition with rounding.
 - `-`: Subtraction.
-- `f64::to_bits()`: Conversion to IEEE-754 formatted bits. In C, one can use a `memcpy()` to do this conversion.
+- `f64::to_bits()`: Conversion to IEEE-754 formatted bits. This is to directly map an `f64` to a 64-bit unsigned integer. 
 
 By the IEEE-754 standard, 64-bit floating-point values have the following bit layout:
 
@@ -122,7 +118,7 @@ By the IEEE-754 standard, 64-bit floating-point values have the following bit la
 
 The exponent has a bias of 1023; that is, to obtain its absolute value, subtract 1023.
 
-For clarity, I will use this format to display `f64`s: `(sign, unbiased exponent, mantissa in hex)`. For example, the `f64` `(0, 103, 0A8C3F0EB9985)` is positive because its sign bit is 0, has an exponent of `1126 - 1023 = 13`, and has a mantissa of `0x0A8C3F0EB9985`.
+For clarity, I will use this format to display `f64`s: `(sign, unbiased exponent, mantissa in hex)`. For example, the `f64` `(0, 103, 0A8C3F0EB9985)` is positive because its sign bit is 0, has an exponent of 103, and has a mantissa of `0x0A8C3F0EB9985`.
 
 ### The algorithm
 
@@ -137,7 +133,7 @@ First, let us define some constants:
 
 Next, compute the floating points `hi`, `sub`, and `lo`:
 
-```rust!
+```rust
 let mut hi = a.mul_add(b, c1);
 let sub = c2 - hi;
 let mut lo = a.mul_add(b, sub);
@@ -145,13 +141,13 @@ let mut lo = a.mul_add(b, sub);
 
 Next, we subtract `c1.to_bits()` from `hi.to_bits()`, effectively applying a bitmask. This approach allows multiple product terms to be summed, followed by a single subtraction, rather than applying a bitmask each time a product is computed (EZW18 p131).
 
-```rust!
+```rust
 let mut hi = hi.to_bits() - c1.to_bits();
 ```
 
 Finally, we perform a conditional subtraction on the high bits, mask the low bits, and return the results.
 
-```rust!
+```rust
 let lo = lo.to_bits() & mask;
 // If the lower word is negative, subtract 1 from the higher word
 if lo & 0x4000000000000u64 > 0 {
@@ -182,7 +178,7 @@ Let's visualise this with example values `a = 1596695558896492` and `b = 1049164
 The binary representation of the full (non-floating-point) product of `a * b + c1` is:
 
 ``` 
-╭╴ 104
+╭╴ 104th bit
 10010101001001001101... 10110 101111110101001101101...10100
  ╰─ The higher 52 bits  ────╯ ╰─ The lower 51 bits    ────╯
                               ╰─ The rounding bit
@@ -240,7 +236,7 @@ The reason for decoupling the reduction and carry propagation is to optimise ell
 Gregor Mitscha-Baude's submission to ZPrize 2022 uses reduced-radix big integer representation (29 or 30 bits), along with a custom Montgomery multiplication algorithm that minimises bitshifts. This allows his code to outperform the classic CIOS method which uses 32-bit limbs. He provides a full description of his method in his [`montgomery`
 repository](https://github.com/mitschabaude/montgomery/blob/main/doc/zprize22.md#13-x-30-bit-multiplication).
 
-The key insight is that 32-bit limbs require a carry after every product (e.g. $a_i * b_j$), which involves an addition, a bitwise AND, and a bitshift. If, however, smaller limbs are used, multiple products can be done without carries. For 29-bit limbs, that number is 64, and 16 for 30-bit limbs. A further minor optimisation is that based on the limb size, some conditional branches can be omitted from Mitscha-Baude's algorithm.
+His key insight is that 32-bit limbs require a carry after every product (e.g. $a_i * b_j$), which involves an addition, a bitwise AND, and a bitshift. If, however, smaller limbs are used, multiple products can be done without carries. A further minor optimisation is that based on the limb size, some conditional branches can be omitted from Mitscha-Baude's algorithm.
 
 # Benchmarks and discussion
 
@@ -296,8 +292,8 @@ Note that Bos' method with SIMD instructions is significantly slower than the eq
 
 # Implications and future work
 
-Since web browsers today only support a small set of SIMD opcodes without unpacking them, and benchmarks show that Mitscha-Baude's non-SIMD reduced-radix method outperforms the SIMD-based methods anyway, it stands to reason that it is worthwhile to just use Mitscha-Baude's method. If some day browsers support all the SIMD opcodes that Bos and Emmart use without unpacking SIMD vector data, it may then be worthwhile to adopt those methods.
+Since web browsers today only support a small set of SIMD opcodes without unpacking them, and benchmarks show that Mitscha-Baude's non-SIMD reduced-radix method outperforms the SIMD-based methods anyway, it is worthwhile to just use Mitscha-Baude's method. If browsers someday support all SIMD opcodes that Bos and Emmart use without unpacking SIMD vector data, it may then be worthwhile to adopt those methods.
 
-Furthermore, there is a possibility that not all consumer devices support the FMA SIMD opcode. To ensure compatibility with as many devices as possible, Mitscha-Baude's method is preferable.
+Furthermore, it is possible that not all consumer devices support the FMA SIMD opcode. To ensure compatibility with as many devices as possible, Mitscha-Baude's method is preferable.
 
 Conversely, for consumer devices which do support the `i64x2_add` opcode (and others like it), and in applications which do not run in WASM, Emmart's or Bos' methods may be faster. For example, a native Android or iOS app could take advantage of such SIMD opcodes for greater effect. More analysis and benchmarks are needed to validate this hypothesis.
