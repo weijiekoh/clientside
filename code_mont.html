@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Overview - clientside</title>
+        <title>mont.h - clientside</title>
 
 
         <!-- Custom HTML head -->
@@ -90,7 +90,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html" class="active"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="montgomery_multiplication.html"><strong aria-hidden="true">2.</strong> Montgomery multiplication</a></li><li class="chapter-item expanded "><a href="clientside_code.html"><strong aria-hidden="true">3.</strong> This codebase</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="code_mont.html"><strong aria-hidden="true">3.1.</strong> mont.h</a></li></ol></li><li class="chapter-item expanded "><a href="future_directions.html"><strong aria-hidden="true">4.</strong> Future directions</a></li><li class="chapter-item expanded "><a href="credits.html"><strong aria-hidden="true">5.</strong> Credits</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="montgomery_multiplication.html"><strong aria-hidden="true">2.</strong> Montgomery multiplication</a></li><li class="chapter-item expanded "><a href="clientside_code.html"><strong aria-hidden="true">3.</strong> This codebase</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="code_mont.html" class="active"><strong aria-hidden="true">3.1.</strong> mont.h</a></li></ol></li><li class="chapter-item expanded "><a href="future_directions.html"><strong aria-hidden="true">4.</strong> Future directions</a></li><li class="chapter-item expanded "><a href="credits.html"><strong aria-hidden="true">5.</strong> Credits</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -176,44 +176,20 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
-<h1 id="clientside-optimising-client-side-zk-in-wasm"><a class="header" href="#clientside-optimising-client-side-zk-in-wasm"><code>clientside</code>: Optimising Client-Side ZK in WASM</a></h1>
-<p>Privacy-preserving applications of zero-knowledge proofs typically rely on
-protocols that use large-prime field and elliptic curve arithmetic. These
-operations, however, are computationally intensive for consumer devices,
-leading to latency and therefore subpar user experiences. Moreover, it is
-unacceptable to outsource proof generation to a third-party server since this
-would expose private user data. As such, it is important to optimise the
-algorithms and techniques for client-side proof generation.</p>
-<p>Significant progress in this area has emerged from the <a href="https://www.zprize.io">ZPrize
-competition</a> organised by <a href="https://aleo.org/">Aleo</a> and
-others. Submissions to this competition include accelerated code for <a href="https://www.zprize.io/blog/announcing-zprize-results">elliptic
-curve and finite field
-arithmetic</a>, as well as
-speeding up the <a href="https://www.zprize.io/blog/announcing-the-2023-zprize-winners">multi-scalar multiplication
-algorithm</a> in
-the browser using technologies such as WASM and
-<a href="https://en.wikipedia.org/wiki/WebGPU">WebGPU</a>. All of this work has been
-open-sourced, and anyone can adopt these optimisations.</p>
-<p>Yet, there are still some gaps: some techniques are not fully documented, and
-engineers need to look up various academic papers and dissect complicated
-codebases in order to understand how they work. Furthermore, while benchmarks
-of the contest submissions were performed by the ZPrize judges, benchmarks of
-individual techniques, such as different ways to perform Montgomery
-multiplication, have not yet been done.</p>
-<p>The goal of this project is to address these issues. This document and
-repository aims to help software engineers get up to speed with highly optmised
-client-side cryptography. To start with, this document will provide detailed
-explanations of optimised Montgomery multiplication algorithms for large prime
-fields, as well as their associated benchmarks. In the future, this document
-will cover more topics, such as but not limited to optimistions for elliptic
-curve operations, multi-scalar multiplication, and fast Fourier transforms.</p>
+<h1 id="month"><a class="header" href="#month">mont.h</a></h1>
+<p>This file contains Montgomery modular multiplication implementations. Each
+function comes with test cases in <code>tests/test_mont.c</code> and benchmarks in
+<code>benchmarks/bench_mont_mul.c</code>.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="clientside_code.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
 
-                            <a rel="next prefetch" href="montgomery_multiplication.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="future_directions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -223,8 +199,11 @@ curve operations, multi-scalar multiplication, and fast Fourier transforms.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="clientside_code.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
 
-                    <a rel="next prefetch" href="montgomery_multiplication.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="future_directions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
