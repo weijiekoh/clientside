@@ -13,7 +13,6 @@ MU_TEST(test_mont_mul_9x29) {
     uint64_t mu = 536870911;
     BigInt261 ar, br, p;
     int result;
-    char* result_hex = malloc(65 * sizeof(char));
     for (int i = 0; i < NUM_TESTS; i++) {
         char* ar_hex = hex_strs[i * 3];
         char* br_hex = hex_strs[i * 3 + 1];
@@ -28,12 +27,10 @@ MU_TEST(test_mont_mul_9x29) {
 
         BigInt261 res = mont_mul_9x29(&ar, &br, &p, mu);
 
-        result_hex = bigint261_to_hex(&res);
-        /*printf("%s\n", result_hex);*/
-        /*printf("%s\n", abr_hex);*/
+        char* result_hex = bigint261_to_hex(&res);
         mu_check(strcmp(result_hex, abr_hex) == 0);
+        free(result_hex);
     }
-    free(result_hex);
 }
 
 MU_TEST(test_mont_mul_9x30) {
@@ -51,7 +48,6 @@ MU_TEST(test_mont_mul_9x30) {
     /*char* abr_hex = "0343242b5efb74206e6adbd66423a34c148866255f015136015dcf703f3baa19";*/
     BigInt270 ar, br, p;
     int result;
-    char* result_hex = malloc(65 * sizeof(char));
     for (int i = 0; i < NUM_TESTS; i++) {
         char* ar_hex = hex_strs[i * 3];
         char* br_hex = hex_strs[i * 3 + 1];
@@ -66,12 +62,10 @@ MU_TEST(test_mont_mul_9x30) {
 
         BigInt270 res = mont_mul_9x30(&ar, &br, &p, mu);
 
-        result_hex = bigint270_to_hex(&res);
-        /*printf("%s\n", result_hex);*/
-        /*printf("%s\n", abr_hex);*/
+        char* result_hex = bigint270_to_hex(&res);
         mu_check(strcmp(result_hex, abr_hex) == 0);
+        free(result_hex);
     }
-    free(result_hex);
 }
 
 MU_TEST(test_mont_mul_cios_f64_simd) {
@@ -91,9 +85,6 @@ MU_TEST(test_mont_mul_cios_f64_simd) {
     // Convert p_hex, ar_hex, and br_hex to BigIntF255s
     result = hex_to_bigintf255(p_hex, &p);
     mu_check(result == 0);
-
-    char* result_hex = malloc(65 * sizeof(char));
-    /*printf("\n");*/
 
     BigIntF255 p_for_redc = bigintf_new();
     uint64_t p0 = 0x1800000000001;
@@ -129,13 +120,11 @@ MU_TEST(test_mont_mul_cios_f64_simd) {
             memcpy(&abrj, &(abr.v[j]), sizeof(uint64_t));
         }
 
+        char* result_hex = malloc(65 * sizeof(char));
         bigintf255_to_hex(&abr, result_hex);
-
-        /*printf("%s\n", result_hex);*/
         mu_check(strcmp(result_hex, abr_hex) == 0);
+        free(result_hex);
     }
-
-    free(result_hex);
 }
 
 typedef BigInt256 (*MontMulFunc)(BigInt256 *, BigInt256 *, BigInt256 *, uint64_t);
