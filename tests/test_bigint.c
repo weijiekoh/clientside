@@ -1,7 +1,6 @@
 #include "minunit.h"
 #include "../c/bigint.h"
 
-
 // Inline WASM using __asm__ in C code
 int add(int a, int b) {
     int result;
@@ -16,9 +15,30 @@ int add(int a, int b) {
     return result;
 }
 
-MU_TEST(test_asm) {
+// Inline WASM using __asm__ in C code
+int sub(int a, int b) {
+    int result;
+    __asm__ (
+        "local.get %1\n"   // Push 'a' onto the stack
+        "local.get %2\n"   // Push 'b' onto the stack
+        "i32.sub\n"        // Perform the subtraction
+        "local.set %0\n"   // Store result in 'result'
+        : "=r" (result)    // Output operand
+        : "r" (a), "r" (b) // Input operands
+    );
+    return result;
+}
+
+MU_TEST(test_asm_add) {
     int a = 5, b = 10;
-    printf("Result of %d + %d = %d\n", a, b, add(a, b));
+    int result = add(a, b);
+    mu_check(result == a + b);
+}
+
+MU_TEST(test_asm_sub) {
+    int a = 10, b = 5;
+    int result = sub(a, b);
+    mu_check(result == a - b);
 }
 
 
@@ -204,7 +224,8 @@ MU_TEST(test_bigint_sub_3) {
 }
 
 MU_TEST_SUITE(test_suite) {
-    MU_RUN_TEST(test_asm);
+    MU_RUN_TEST(test_asm_add);
+    MU_RUN_TEST(test_asm_sub);
 	MU_RUN_TEST(test_bigint_eq);
 	MU_RUN_TEST(test_bigint_gt);
 	MU_RUN_TEST(test_bigint_sub);

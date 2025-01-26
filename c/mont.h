@@ -4,7 +4,6 @@
 
 // TODO: 
 // - https://github.com/ingonyama-zk/papers/blob/main/multi_precision_fast_mod_mul.pdf
-// - Non-SIMD CIOS (29-bit limbs in arrays of uint64_t) from Mitscha-Baude
 //
 // Done:
 // - Non-SIMD CIOS (32-bit limbs in arrays of uint64_t) from Acar (see Mrabet et al)
@@ -12,6 +11,7 @@
 // - SIMD CIOS (51-bit limbs in arrays of doubles) from BM17
 // - Niall's SIMD algo using f64s
 // - Non-SIMD CIOS (30-bit limbs in arrays of uint64_t) from Mitscha-Baude
+// - Non-SIMD CIOS (29-bit limbs in arrays of uint64_t) from Mitscha-Baude
 
 /// Returns the higher 29 bits.
 static inline uint64_t hi_29(uint64_t v) {
@@ -81,11 +81,11 @@ BigInt261 mont_mul_9x29(
     BigInt261 *p,
     uint64_t mu
 ) {
-    const int nsafe = 32;
+    //const int nsafe = 32;
     const size_t NUM_LIMBS = 9;
     uint64_t s[9] = {0};
-
     uint64_t t, t_lo, qi, c;
+
     for (int i = 0; i < NUM_LIMBS; i ++) {
         t = s[0] + ar->v[i] * br->v[0];
         t_lo = lo_29(t);
@@ -174,11 +174,11 @@ BigInt270 mont_mul_9x30(
     BigInt270 *p,
     uint64_t mu
 ) {
-    const int nsafe = 8;
+    //const int nsafe = 8;
     const size_t NUM_LIMBS = 9;
     uint64_t s[9] = {0};
-
     uint64_t t, t_lo, qi, c;
+
     for (int i = 0; i < NUM_LIMBS; i ++) {
         t = s[0] + ar->v[i] * br->v[0];
         t_lo = lo_30(t);
